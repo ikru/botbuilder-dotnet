@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Security.Cryptography.Xml;
 using Microsoft.Bot.Builder.AI.QnA.Recognizers;
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Dialogs.Adaptive;
@@ -179,7 +178,11 @@ namespace Microsoft.BotBuilderSamples
 
                 // Property path where previous qna id is set. This is required to have multi-turn QnA working.
                 QnAId = "turn.qnaIdFromPrompt",
+
+                // Disable teletry logging
                 LogPersonalInformation = false,
+
+                // Disable automatically including dialog name as meta data filter on calls to QnA Maker.
                 IncludeDialogNameInMetadata = false
             };
 
