@@ -5,11 +5,11 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Bot.Builder;
-using Microsoft.Bot.Builder.BotFramework;
+using Microsoft.Bot.Builder.AI.Luis;
+using Microsoft.Bot.Builder.AI.QnA;
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Dialogs.Adaptive;
 using Microsoft.Bot.Builder.Dialogs.Declarative;
-using Microsoft.Bot.Builder.Dialogs.Declarative.Resources;
 using Microsoft.Bot.Builder.Integration.AspNet.Core;
 using Microsoft.Bot.Connector.Authentication;
 using Microsoft.Extensions.Configuration;
@@ -19,7 +19,7 @@ namespace Microsoft.BotBuilderSamples
 {
     public class Startup
     {
-        public Startup(IConfiguration configuration, IWebHostEnvironment env)
+        public Startup(IConfiguration configuration, IHostingEnvironment env)
         {
             this.Configuration = configuration;
             this.HostingEnvironment = env;
@@ -27,7 +27,7 @@ namespace Microsoft.BotBuilderSamples
 
         private IConfiguration Configuration { get; set; }
 
-        private IWebHostEnvironment HostingEnvironment { get; set; }
+        private IHostingEnvironment HostingEnvironment { get; set; }
 
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
@@ -35,21 +35,17 @@ namespace Microsoft.BotBuilderSamples
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
 
             ComponentRegistration.Add(new DialogsComponentRegistration());
-
-            ComponentRegistration.Add(new DeclarativeComponentRegistration());
             ComponentRegistration.Add(new AdaptiveComponentRegistration());
             ComponentRegistration.Add(new LanguageGenerationComponentRegistration());
-
-            //ComponentRegistration.Add(new QnAMakerComponentRegistration());
-            //ComponentRegistration.Add(new LuisComponentRegistration());
-
+            ComponentRegistration.Add(new QnAMakerComponentRegistration());
+            
             // Create the credential provider to be used with the Bot Framework Adapter.
             services.AddSingleton<ICredentialProvider, ConfigurationCredentialProvider>();
 
-            // Create the Bot Framework Adapter with error handling enabled.
-            services.AddSingleton<IBotFrameworkHttpAdapter, EchoBotAdapter>();
+            // Create the Bot Framework Adapter with error handling enabled. 
+            services.AddSingleton<IBotFrameworkHttpAdapter, AdapterWithErrorHandler>();
 
-            // Create the storage we'll be using for User and Conversation state. (Memory is great for testing purposes.)
+            // Create the storage we'll be using for User and Conversation state. (Memory is great for testing purposes.) 
             services.AddSingleton<IStorage, MemoryStorage>();
 
             // Create the User state. (Used in this bot's Dialog implementation.)
@@ -58,11 +54,14 @@ namespace Microsoft.BotBuilderSamples
             // Create the Conversation state. (Used by the Dialog system itself.)
             services.AddSingleton<ConversationState>();
 
-            var resourceExplorer = new ResourceExplorer().LoadProject(this.HostingEnvironment.ContentRootPath);
-            services.AddSingleton(resourceExplorer);
+            // The Dialog that will be run by the bot.
+            services.AddSingleton<RootDialog>();
 
-            // Create the bot  In this case the ASP Controller is expecting an IBot.
-            services.AddSingleton<IBot, EchoBot>();
+            // Create the bot. the ASP Controller is expecting an IBot.
+            services.AddSingleton<IBot, DialogBot<RootDialog>>();
+
+            // Add this so memory scopes are populated correctly
+            services.AddSingleton<IConfiguration>(this.Configuration);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

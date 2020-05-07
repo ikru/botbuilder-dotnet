@@ -1,8 +1,8 @@
 ﻿# EchoBot
 
-Bot Framework v4 echo bot sample.
+Bot Framework v4 qnamaker bot sample.
 
-This bot has been created using [Bot Framework](https://dev.botframework.com), it shows how to create a simple bot that accepts input from the user and echoes it back.
+This bot has been created using [Bot Framework](https://dev.botframework.com), it shows how to consume [QnAMaker.ai](https://qnamaker.ai) KBs within your adaptive dialog based bot.
 
 ## Prerequisites
 
@@ -12,7 +12,7 @@ This bot has been created using [Bot Framework](https://dev.botframework.com), i
   # determine dotnet version
   dotnet --version
   ```
-  - Install required [Luis applications](#LUIS-Setup) required for this sample.
+  - Install required [QnA Maker KB](#QnAMaker-Setup) required for this sample.
 
 ## To try this sample
 
@@ -22,7 +22,7 @@ This bot has been created using [Bot Framework](https://dev.botframework.com), i
     git clone https://github.com/Microsoft/botbuilder-samples.git
     ```
 
-- In a terminal, navigate to `samples/csharp_dotnetcore/02.echo-bot`
+- In a terminal, navigate to `10.qnamaker-bot`
 - Run the bot from a terminal or from Visual Studio, choose option A or B.
 
   A) From a terminal
@@ -36,8 +36,8 @@ This bot has been created using [Bot Framework](https://dev.botframework.com), i
 
   - Launch Visual Studio
   - File -> Open -> Project/Solution
-  - Navigate to `samples/csharp_dotnetcore/02.echo-bot` folder
-  - Select `EchoBot.csproj` file
+  - Navigate to `10.qnamaker-bot` folder
+  - Select `QnAMakerBot.csproj` file
   - Press `F5` to run the project
 
 ## Testing the bot using Bot Framework Emulator
@@ -52,21 +52,21 @@ This bot has been created using [Bot Framework](https://dev.botframework.com), i
 - File -> Open Bot
 - Enter a Bot URL of `http://localhost:3978/api/messages`
 
-LUIS Setup
+## QnAMaker Setup
 ### Using CLI
 - Install [nodejs][2] version 10.14 or higher
 - Install required CLI tools
 ```bash
 > npm i -g luis-apis @microsoft/botframework-cli
 ```
-- In a command prompt, navigate to `botbuilder-samples/experimental/adaptive-dialog/csharp_dotnetcore/todo-bot`
-- Run luis:build to create/ update, train and publish LUIS applications for each .lu file for this bot. 
-- Get your [LUIS authoring key](https://docs.microsoft.com/en-us/azure/cognitive-services/LUIS/luis-concept-keys)
+- In a command prompt, navigate to `10.qnamaker`
+- Run qnamaker:build to create/ update, train and publish QnA Maker KBs required to run this bot. The content for the KB comes from .qna files under dialogs.
+- Get your [QnA Maker subscription key](https://docs.microsoft.com/en-us/azure/cognitive-services/QnAMaker/how-to/set-up-qnamaker-service-azure#create-a-new-qna-maker-service)
 ```bash
-> bf luis:build --authoringKey <your-key> --botName InterruptionBotSample --in . --out generated --log
+> bf qnamaker:build --subscriptionKey <your-key> --botName QnAMakerBotSample --in . --out generated --log 
 ```
-- This command writes out a bunch of .dialog files (which are useful if you are using declarative form of adaptive dialogs) as well as luis.settings.\<youralias>.\<region>.json file. 
-- Add the application IDs for the created applications from luis.settings.\<youralias>.\<region>.json to appsettings.
+- This command writes out a bunch of .dialog files (which are useful if you are using declarative form of adaptive dialogs) as well as qnamaker.settings.\<youralias>.\<region>.json file. 
+- Add the KB IDs for the created applications from qnamaker.settings.\<youralias>.\<region>.json to appsettings.json
 
 ## Deploy the bot to Azure
 

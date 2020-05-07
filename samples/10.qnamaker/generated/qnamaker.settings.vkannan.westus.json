@@ -1,0 +1,6 @@
+{
+    "qna": {
+        "qnamakerSampleBot_en_us_qna": "f32214cf-8e7b-46b3-a874-24829f45fbb2",
+        "hostname": "https://vk-test-qna2.azurewebsites.net/qnamaker"
+    }
+}

@@ -1,0 +1,7 @@
+{
+    "$kind": "Microsoft.MultiLanguageRecognizer",
+    "recognizers": {
+        "en-us": "qnamakerSampleBot.en-us.qna",
+        "": "qnamakerSampleBot.en-us.qna"
+    }
+}
