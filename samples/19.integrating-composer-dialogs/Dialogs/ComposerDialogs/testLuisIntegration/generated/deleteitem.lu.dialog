@@ -1,7 +1,0 @@
-{
-    "$kind": "Microsoft.MultiLanguageRecognizer",
-    "recognizers": {
-        "en-us": "deleteitem.en-us.lu",
-        "": "deleteitem.en-us.lu"
-    }
-}

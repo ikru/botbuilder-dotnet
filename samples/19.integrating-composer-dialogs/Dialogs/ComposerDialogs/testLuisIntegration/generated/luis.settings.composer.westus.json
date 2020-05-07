@@ -1,9 +1,0 @@
-{
-    "luis": {
-        "viewitem_en_us_lu": "01b83a9d-6541-4291-9bec-39a02fd4b4fb",
-        "additem_en_us_lu": "6c5c83b6-1f3f-4d5d-8541-9c826a797ede",
-        "deleteitem_en_us_lu": "a291c3dc-56cd-4558-8b18-bc1466a1139a",
-        "userprofile_en_us_lu": "352b945a-97d4-43fa-ae8b-188ee83fd306",
-        "testluisintegration_en_us_lu": "7ef754fe-beb1-494d-a63f-591cfc48a5b9"
-    }
-}

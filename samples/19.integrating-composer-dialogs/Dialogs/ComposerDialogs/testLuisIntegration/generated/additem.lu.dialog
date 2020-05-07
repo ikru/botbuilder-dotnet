@@ -1,7 +1,0 @@
-{
-    "$kind": "Microsoft.MultiLanguageRecognizer",
-    "recognizers": {
-        "en-us": "additem.en-us.lu",
-        "": "additem.en-us.lu"
-    }
-}
