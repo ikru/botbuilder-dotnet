@@ -1,7 +1,0 @@
-{
-    "$kind": "Microsoft.MultiLanguageRecognizer",
-    "recognizers": {
-        "en-us": "TodoBotWithLuisAndQnA.en-us.qna",
-        "": "TodoBotWithLuisAndQnA.en-us.qna"
-    }
-}
