@@ -1,0 +1,8 @@
+{
+    "$kind": "Microsoft.CrossTrainedRecognizerSet",
+    "recognizers": [
+        "sandwich.lu",
+        "sandwich.qna"
+    ],
+    "id": "qna"
+}

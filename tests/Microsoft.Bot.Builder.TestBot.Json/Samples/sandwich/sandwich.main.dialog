@@ -7,15 +7,15 @@
 			"en-us": {
 				"$kind": "Microsoft.CrossTrainedRecognizerSet",
 				"recognizers": [
-					"sandwich.lu",
-					"sandwich.qna"
+					"sandwich.en-us.lu",
+					"sandwich.en-us.qna"
 				]
 			}
 		}
 	},
 	"autoEndDialog": false,
 	"generator": "sandwich.lg",
-	"schema": "sandwich.schema",
+	"schema": "sandwich.json",
 	"triggers": [
 		{
 			"$kind": "Microsoft.OnQnAMatch",

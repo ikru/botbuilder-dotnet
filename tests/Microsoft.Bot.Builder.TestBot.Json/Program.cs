@@ -2,14 +2,10 @@
 // Licensed under the MIT License.
 
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Diagnostics;
-using System.IO;
-using System.Reflection.Emit;
-using Microsoft.AspNetCore;
+
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Bot.Builder.AI.Luis;
+using Microsoft.Bot.Builder.AI.QnA;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 

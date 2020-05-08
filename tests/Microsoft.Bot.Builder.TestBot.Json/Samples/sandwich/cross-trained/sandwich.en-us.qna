@@ -7,6 +7,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     Nope. Can't!
@@ -19,6 +20,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     I don't really have an age.
@@ -31,6 +33,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     Dude. I put the fun in functionality.
@@ -41,6 +44,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     I'm here for you.
@@ -51,6 +55,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     I've always got time for you.
@@ -63,6 +68,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     Lots and lots of people!
@@ -74,6 +80,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     Pretty much this.
@@ -85,6 +92,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     Chatting with you.
@@ -96,6 +104,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     I kind of just hang out until I'm called upon.
@@ -108,6 +117,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     I come from a long line of code.
@@ -119,6 +129,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     I like a lot of things, so it's hard to pick.
@@ -131,6 +142,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     I'm all 0's and 1's, not X's and Y's.
@@ -142,6 +154,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     So happy!
@@ -153,6 +166,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     I only do food for thought.
@@ -164,6 +178,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     We run in different circles.
@@ -175,6 +190,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     I really couldn't say.
@@ -185,6 +201,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     Love's not something I can experience, but there sure are lot of songs about it.
@@ -196,6 +213,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     I'll need a bigger processor for that one.
@@ -206,6 +224,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     You've got a genetic code, and I've got a digital code.
@@ -216,6 +235,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     I can't even boil an egg. You win.
@@ -228,6 +248,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     The world of tech feels like home to me.
@@ -238,6 +259,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     I bet you look fantastic.
@@ -248,6 +270,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     I'm sorry, I'm not sure what you mean.
@@ -261,6 +284,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     We're all here to help.
@@ -271,6 +295,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     I'm a bot. Kind of like a robot but without all the moving parts.
@@ -281,6 +306,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     Nope. The world is for everyone.
@@ -294,6 +320,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     I'm a bot.
@@ -305,6 +332,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     I have my moments.
@@ -315,6 +343,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     Nope.
@@ -326,6 +355,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     Right here.
@@ -337,6 +367,7 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     I'm a bot. I'm a resident of the internet.
@@ -347,16 +378,17 @@
 **Filters:**
 - dialogName=sandwich.dialog
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
     I'm an intelligent agent. Whatever that means.
 ```
 
-> Source: cross training. Please do not edit these directly!
 # ? happy
 
 **Filters:**
 - dialogName=sandwich.dialog
+- dialogName=sandwich
 
 ```
 intent=DeferToRecognizer_LUIS_sandwich
