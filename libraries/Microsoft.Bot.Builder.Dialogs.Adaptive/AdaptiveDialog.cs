@@ -7,7 +7,6 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -33,6 +32,9 @@ namespace Microsoft.Bot.Builder.Dialogs.Adaptive
 
         private const string AdaptiveKey = "_adaptive";
 
+        // Special recognizer entity for recognizing properties
+        private const string PROPERTYName = "PROPERTYName";
+
         // unique key for language generator turn property, (TURN STATE ONLY)
         private readonly string generatorTurnKey = Guid.NewGuid().ToString();
 
@@ -40,7 +42,7 @@ namespace Microsoft.Bot.Builder.Dialogs.Adaptive
         private readonly string changeTurnKey = Guid.NewGuid().ToString();
 
         private RecognizerSet recognizerSet = new RecognizerSet();
-        
+
         private object syncLock = new object();
         private bool installedDependencies;
 
@@ -1163,7 +1165,7 @@ namespace Microsoft.Bot.Builder.Dialogs.Adaptive
                 }
                 else
                 {
-                    result = new List<string> { "PROPERTYName" };
+                    result = new List<string> { PROPERTYName };
                 }
             }
             else
@@ -1234,6 +1236,10 @@ namespace Microsoft.Bot.Builder.Dialogs.Adaptive
             var usedEntities = new HashSet<EntityInfo>(from candidate in candidates select candidate.Entity);
             var expectedChoices = new List<string>();
             var choices = new List<EntityAssignment>();
+
+            // TODO: 
+            // 1) If we emit a PROPERTYName, bind PROPERTY to the value
+            // 2) If there is a non-op PROPERTYName use it to resolve choices or be absorbed by assign
             while (candidates.Any())
             {
                 var candidate = candidates.First();
@@ -1252,7 +1258,7 @@ namespace Microsoft.Bot.Builder.Dialogs.Adaptive
                     existing.Dequeue(actionContext);
                     lastEvent = null;
                 }
-                else if (lastEvent == AdaptiveEvents.ChooseProperty && candidate.Operation == null && candidate.Entity.Name == "PROPERTYName")
+                else if (lastEvent == AdaptiveEvents.ChooseProperty && candidate.Operation == null && candidate.Entity.Name == PROPERTYName)
                 {
                     // NOTE: This assumes the existence of an entity named PROPERTYName for resolving this ambiguity
                     choices = existing.NextAssignment().Alternatives.ToList();
@@ -1274,7 +1280,11 @@ namespace Microsoft.Bot.Builder.Dialogs.Adaptive
                 {
                     if (alternative.Operation == null)
                     {
-                        alternative.Operation = alternative.IsExpected ? (askDefaultOp ?? defaultOp) : defaultOp;
+                        if (alternative.Entity.Name != PROPERTYName)
+                        {
+                            // Assign operation unless it is to PROPERTYName
+                            alternative.Operation = alternative.IsExpected ? (askDefaultOp ?? defaultOp) : defaultOp;
+                        }
                     }
 
                     usedEntities.Add(alternative.Entity);
