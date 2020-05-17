@@ -1287,6 +1287,12 @@ namespace Microsoft.Bot.Builder.Dialogs.Adaptive
                         }
                     }
 
+                    if (alternative.Entity.Name == PROPERTYName && alternative.Property == null)
+                    {
+                        // Allows writing rules with an operation and explicit property name
+                        alternative.Property = alternative.Entity.Value as string;
+                    }
+
                     usedEntities.Add(alternative.Entity);
                 }
 
