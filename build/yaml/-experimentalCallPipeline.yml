@@ -1,0 +1,4 @@
+# Call another pipeline. Run it within this build to capture the log output here. 
+# A test for running a DevOps build within a GitHub Check Run workflow.
+extends:
+  template: -experimentalDummy.yml
