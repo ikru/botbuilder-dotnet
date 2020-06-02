@@ -1,3 +1,6 @@
+pool:
+    vmImage: 'windows-latest'
+
 variables:
   TriggeredReason: $[ coalesce( variables['TriggeringBuildReason'], variables['Build.Reason'] ) ]
   # NextBuild: define in Azure '[experimental]Dummy-build2'
