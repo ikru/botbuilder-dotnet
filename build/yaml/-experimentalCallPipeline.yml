@@ -3,5 +3,10 @@
 pool:
     vmImage: 'windows-latest'
 
-extends:
-  template: -experimentalDummy.yml
+stages:
+- stage: Stage 1
+  jobs:
+    - job: Job 1
+
+    extends:
+      template: -experimentalDummy.yml
