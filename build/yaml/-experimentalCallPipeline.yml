@@ -1,11 +1,10 @@
 # Call another pipeline. Run it within this build to capture the log output here. 
 # A test for running a DevOps pipeline within a GitHub Check Run workflow.
-pool:
-    vmImage: 'windows-latest'
-
-stages:
-- stage: Stage 1
-  jobs:
-    - job: Job 1
-      steps:
-      - template: -experimentalDummy.yml
+#extends:
+#  template: -experimentalDummy.yml
+resources:
+  pipelines:
+  - pipeline: Test3
+    project: SDK_v4
+    source: [experimental]Dummy-Build-yaml
+    trigger: true
