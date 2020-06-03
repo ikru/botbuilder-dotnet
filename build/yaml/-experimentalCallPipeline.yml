@@ -8,4 +8,4 @@ stages:
   jobs:
     - job: Job 1
 
-      template: -experimentalDummy.yml
+      - template: -experimentalDummy.yml
