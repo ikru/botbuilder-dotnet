@@ -6,5 +6,5 @@ resources:
   pipelines:
   - pipeline: Test3
     project: SDK_v4
-    source: [experimental]Dummy-Build-yaml
+    source: "[experimental]Dummy-Build-yaml"
     trigger: true
