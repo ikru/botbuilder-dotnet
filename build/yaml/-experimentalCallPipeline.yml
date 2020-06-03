@@ -8,5 +8,5 @@ stages:
   jobs:
     - job: Job 1
 
-    extends:
-      template: -experimentalDummy.yml
+      extends:
+        template: -experimentalDummy.yml
