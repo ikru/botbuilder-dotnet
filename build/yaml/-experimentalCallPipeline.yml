@@ -7,5 +7,5 @@ stages:
 - stage: Stage 1
   jobs:
     - job: Job 1
-
+      steps:
       - template: -experimentalDummy.yml
