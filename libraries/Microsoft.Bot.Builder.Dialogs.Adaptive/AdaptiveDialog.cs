@@ -379,6 +379,18 @@ namespace Microsoft.Bot.Builder.Dialogs.Adaptive
                         // #3572 set these here too (Even though the emitter may have set them) because this event can be emitted by declarative code.
                         var (name, score) = recognizedResult.GetTopScoringIntent();
                         actionContext.State.SetValue(TurnPath.Recognized, recognizedResult);
+
+                        actionContext.State.TryGetValue<ConversationContext>($"{ScopePath.Conversation}.context", out ConversationContext conversationContext);
+                        
+                        if (conversationContext == null)
+                        {
+                            conversationContext = new ConversationContext();
+                        }
+
+                        conversationContext.OnTurn(actionContext.Context, recognizedResult);
+
+                        actionContext.State.SetValue($"{ScopePath.Conversation}.context", conversationContext);
+
                         actionContext.State.SetValue(TurnPath.TopIntent, name);
                         actionContext.State.SetValue(TurnPath.TopScore, score);
                         actionContext.State.SetValue(DialogPath.LastIntent, name);

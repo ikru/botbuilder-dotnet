@@ -176,6 +176,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Parent", "tests\Skills\Pare
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Child", "tests\Skills\Child\Child.csproj", "{1958FBA4-BF2D-48D9-A5DB-8915F553EBD3}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.BotFramework.Composer.WebApp", "..\..\..\Users\gapretty\Documents\Composer\ToDoBotWithLuisSample-4\runtime\azurewebapp\Microsoft.BotFramework.Composer.WebApp.csproj", "{BED9A9C2-4271-44A9-93FE-8A38342FFCE8}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.BotFramework.Composer.Core", "..\..\..\Users\gapretty\Documents\Composer\ToDoBotWithLuisSample-4\runtime\core\Microsoft.BotFramework.Composer.Core.csproj", "{30EF38AA-1C1B-494F-B856-706C8BC0B3E7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -736,6 +740,22 @@ Global
 		{1958FBA4-BF2D-48D9-A5DB-8915F553EBD3}.Release|Any CPU.Build.0 = Release|Any CPU
 		{1958FBA4-BF2D-48D9-A5DB-8915F553EBD3}.Release-Windows|Any CPU.ActiveCfg = Release|Any CPU
 		{1958FBA4-BF2D-48D9-A5DB-8915F553EBD3}.Release-Windows|Any CPU.Build.0 = Release|Any CPU
+		{BED9A9C2-4271-44A9-93FE-8A38342FFCE8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BED9A9C2-4271-44A9-93FE-8A38342FFCE8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BED9A9C2-4271-44A9-93FE-8A38342FFCE8}.Debug-Windows|Any CPU.ActiveCfg = Debug|Any CPU
+		{BED9A9C2-4271-44A9-93FE-8A38342FFCE8}.Debug-Windows|Any CPU.Build.0 = Debug|Any CPU
+		{BED9A9C2-4271-44A9-93FE-8A38342FFCE8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BED9A9C2-4271-44A9-93FE-8A38342FFCE8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BED9A9C2-4271-44A9-93FE-8A38342FFCE8}.Release-Windows|Any CPU.ActiveCfg = Release|Any CPU
+		{BED9A9C2-4271-44A9-93FE-8A38342FFCE8}.Release-Windows|Any CPU.Build.0 = Release|Any CPU
+		{30EF38AA-1C1B-494F-B856-706C8BC0B3E7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{30EF38AA-1C1B-494F-B856-706C8BC0B3E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{30EF38AA-1C1B-494F-B856-706C8BC0B3E7}.Debug-Windows|Any CPU.ActiveCfg = Debug|Any CPU
+		{30EF38AA-1C1B-494F-B856-706C8BC0B3E7}.Debug-Windows|Any CPU.Build.0 = Debug|Any CPU
+		{30EF38AA-1C1B-494F-B856-706C8BC0B3E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{30EF38AA-1C1B-494F-B856-706C8BC0B3E7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{30EF38AA-1C1B-494F-B856-706C8BC0B3E7}.Release-Windows|Any CPU.ActiveCfg = Release|Any CPU
+		{30EF38AA-1C1B-494F-B856-706C8BC0B3E7}.Release-Windows|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
