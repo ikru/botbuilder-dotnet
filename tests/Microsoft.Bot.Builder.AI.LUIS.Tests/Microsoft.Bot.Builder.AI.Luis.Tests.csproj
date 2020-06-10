@@ -9,6 +9,9 @@
     <NoWarn>$(NoWarn),CS8002</NoWarn>
   </PropertyGroup>
 
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DelaySign>false</DelaySign>
+  </PropertyGroup>
   <ItemGroup>
     <Compile Include="..\Microsoft.Bot.Builder.Dialogs.Adaptive.Tests\TestUtils.cs" Link="TestUtils.cs" />
   </ItemGroup>

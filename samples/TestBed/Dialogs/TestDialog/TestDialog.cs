@@ -5,8 +5,9 @@ using Microsoft.Bot.Builder.Dialogs.Adaptive;
 using Microsoft.Bot.Builder.Dialogs.Adaptive.Actions;
 using Microsoft.Bot.Builder.Dialogs.Adaptive.Conditions;
 using Microsoft.Bot.Builder.Dialogs.Adaptive.Generators;
-using Microsoft.Bot.Builder.Dialogs.Adaptive.Actions;
+using Microsoft.Bot.Builder.Dialogs.Adaptive.Input;
 using Microsoft.Bot.Builder.Dialogs.Adaptive.Recognizers;
+using Microsoft.Bot.Builder.Dialogs.Adaptive.Templates;
 using Microsoft.Bot.Builder.LanguageGeneration;
 
 namespace Microsoft.BotBuilderSamples
@@ -19,24 +20,14 @@ namespace Microsoft.BotBuilderSamples
             : base(nameof(TestDialog))
         {
             _lgFile = Templates.ParseFile(Path.Join(".", "Dialogs", "TestDialog", "TestDialog.lg"));
-            var testDialog2 = new AdaptiveDialog(nameof(AdaptiveDialog))
+            var testDialog = new AdaptiveDialog("rootDialog")
             {
                 AutoEndDialog = false,
-                Generator = new TemplateEngineLanguageGenerator(_lgFile),
+                Generator = new TemplateEngineLanguageGenerator(),
                 Recognizer = new RegexRecognizer()
                 {
                     Intents = new List<IntentPattern>()
                     {
-                        new IntentPattern()
-                        {
-                            Intent = "goBack",
-                            Pattern = "back"
-                        },
-                        new IntentPattern()
-                        {
-                            Intent = "start",
-                            Pattern = "start"
-                        },
                         new IntentPattern()
                         {
                             Intent = "why",
@@ -46,33 +37,51 @@ namespace Microsoft.BotBuilderSamples
                 },
                 Triggers = new List<OnCondition>()
                 {
-                    new OnIntent()
+                    new OnBeginDialog()
                     {
-                        Intent = "start",
                         Actions = new List<Dialog>()
                         {
                             new TextInput()
                             {
-                                
-                            }
+                                Id = "askForName",
+                                Prompt = new ActivityTemplate("What is your name?"),
+                                Property = "user.name"
+                            },
+                            new SendActivity("I have ${user.name}")
                         }
                     },
-                    new OnUnknownIntent()
+                    new OnIntent()
                     {
-                        Condition = "turn.activity.text != 'hello'",
+                        Intent = "why",
                         Actions = new List<Dialog>()
                         {
-                            new SendActivity("In child .. unknown..You said '${turn.activity.text}'. \n I will not trigger on 'hello'")
+                            new SendActivity()
+                            {
+                                Id = "Self",
+                                Activity = new ActivityTemplate("I have ${join(dialogContext.stack, ' -> ')}")
+                            },
+                            new IfCondition()
+                            {
+                                Condition = "dialogContext.activeDialog == 'askForName'",
+                                Actions = new List<Dialog>()
+                                {
+                                    new SendActivity("I need your name to complete the sample")
+                                },
+                                ElseActions = new List<Dialog>()
+                                {
+                                    new SendActivity("I just need the info..")
+                                }
+                            }
                         }
                     }
                 }
             };
 
             // Add named dialogs to the DialogSet. These names are saved in the dialog state.
-            AddDialog(testDialog2);
+            AddDialog(testDialog);
 
             // The initial child dialog to run.
-            InitialDialogId = nameof(AdaptiveDialog);
+            InitialDialogId = "rootDialog";
         }
     }
 }

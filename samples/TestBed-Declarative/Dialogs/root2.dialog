@@ -1,0 +1,15 @@
+{
+    "$kind": "Microsoft.AdaptiveDialog",
+    "autoEndDialog": false,
+    "triggers": [
+        {
+            "$kind": "Microsoft.OnBeginDialog",
+            "actions": [
+                {
+                    "$kind": "Microsoft.SendActivity",
+                    "activity": "Hello. I have ${settings.luis.endpoint}"
+                }
+            ]
+        }
+    ]
+}
