@@ -3,13 +3,14 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
-using System.Text.RegularExpressions;
 using Microsoft.Extensions.Configuration;
 
 namespace Microsoft.Bot.Builder.AI.Luis
 {
+    /// <summary>
+    /// Extension methods for LUIS.
+    /// </summary>
     public static class LuisExtensions
     {
         /// <summary>
@@ -29,7 +30,7 @@ namespace Microsoft.Bot.Builder.AI.Luis
             var luisRegion = configuration.GetValue<string>("LUIS_AUTHORING_REGION") ?? configuration.GetValue<string>("region") ?? "westus";
             var environment = configuration.GetValue<string>("environment") ?? Environment.UserName;
             var settings = new Dictionary<string, string>();
-            settings["luis:endpoint"] = $"https://{luisRegion}.api.cognitive.microsoft.com";
+            settings["luis:endpoint"] = configuration.GetValue<string>("luis:endpoint") ?? $"https://{luisRegion}.api.cognitive.microsoft.com";
             settings["BotRoot"] = botRoot;
             builder.AddInMemoryCollection(settings);
             if (environment == "Development")
@@ -38,7 +39,7 @@ namespace Microsoft.Bot.Builder.AI.Luis
             }
 
             var di = new DirectoryInfo(botRoot);
-            foreach (var file in di.GetFiles($"luis.settings.{environment.ToLower()}.{luisRegion}.json", SearchOption.AllDirectories))
+            foreach (var file in di.GetFiles($"luis.settings.{environment.ToLowerInvariant()}.{luisRegion}.json", SearchOption.AllDirectories))
             {
                 var relative = file.FullName.Substring(di.FullName.Length);
                 if (!relative.Contains("bin\\") && !relative.Contains("obj\\"))

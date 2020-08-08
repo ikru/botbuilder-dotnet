@@ -9,7 +9,6 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
-using Microsoft.Bot.Builder.BotFramework;
 using Microsoft.Bot.Builder.Streaming;
 using Microsoft.Bot.Connector.Authentication;
 using Microsoft.Extensions.Logging;
@@ -24,16 +23,38 @@ namespace Microsoft.Bot.Builder.Integration.AspNet.WebApi
         private const string AuthHeaderName = "authorization";
         private const string ChannelIdHeaderName = "channelid";
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="BotFrameworkHttpAdapter"/> class.
+        /// </summary>
+        /// <param name="credentialProvider">The credential provider.</param>
+        /// <param name="channelProvider">The channel provider.</param>
+        /// <param name="logger">The ILogger implementation this adapter should use.</param>
         public BotFrameworkHttpAdapter(ICredentialProvider credentialProvider = null, IChannelProvider channelProvider = null, ILogger<BotFrameworkHttpAdapter> logger = null)
             : base(credentialProvider ?? new SimpleCredentialProvider(), channelProvider, logger)
         {
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="BotFrameworkHttpAdapter"/> class.
+        /// </summary>
+        /// <param name="credentialProvider">The credential provider.</param>
+        /// <param name="channelProvider">The channel provider.</param>
+        /// <param name="httpClient">The <see cref="HttpClient"/> used.</param>
+        /// <param name="logger">The ILogger implementation this adapter should use.</param>
         public BotFrameworkHttpAdapter(ICredentialProvider credentialProvider, IChannelProvider channelProvider, HttpClient httpClient, ILogger<BotFrameworkHttpAdapter> logger)
             : base(credentialProvider ?? new SimpleCredentialProvider(), channelProvider, httpClient, logger)
         {
         }
 
+        /// <summary>
+        /// This method can be called from inside a POST method on any Controller implementation.
+        /// </summary>
+        /// <param name="httpRequest">The HTTP request object, typically in a POST handler by a Controller.</param>
+        /// <param name="httpResponse">The HTTP response object.</param>
+        /// <param name="bot">The bot implementation.</param>
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects
+        /// or threads to receive notice of cancellation.</param>
+        /// <returns>A task that represents the work queued to execute.</returns>
         public async Task ProcessAsync(HttpRequestMessage httpRequest, HttpResponseMessage httpResponse, IBot bot, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (httpRequest == null)
@@ -85,6 +106,12 @@ namespace Microsoft.Bot.Builder.Integration.AspNet.WebApi
             }
         }
 
+        private static void WriteUnauthorizedResponse(string headerName, HttpResponseMessage httpResponse)
+        {
+            httpResponse.StatusCode = HttpStatusCode.Unauthorized;
+            httpResponse.Content = new StringContent($"Unable to authenticate. Missing header: {headerName}");
+        }
+
         /// <summary>
         /// Process the initial request to establish a long lived connection via a streaming server.
         /// </summary>
@@ -106,7 +133,7 @@ namespace Microsoft.Bot.Builder.Integration.AspNet.WebApi
 
             ConnectedBot = bot ?? throw new ArgumentNullException(nameof(bot));
 
-            if (HttpContext.Current.IsWebSocketRequest || HttpContext.Current.IsWebSocketRequestUpgrading)
+            if (!HttpContext.Current.IsWebSocketRequest && !HttpContext.Current.IsWebSocketRequestUpgrading)
             {
                 httpResponse.StatusCode = HttpStatusCode.BadRequest;
                 httpResponse.Content = new StringContent("Upgrade to WebSocket is required.");
@@ -141,9 +168,8 @@ namespace Microsoft.Bot.Builder.Integration.AspNet.WebApi
             catch (Exception ex)
             {
                 httpResponse.StatusCode = HttpStatusCode.InternalServerError;
-                httpResponse.Content = new StringContent($"Unable to create transport server. Error: {ex.ToString()}");
-
-                throw ex;
+                httpResponse.Content = new StringContent($"Unable to create transport server. Error: {ex}");
+                throw;
             }
         }
 
@@ -158,13 +184,13 @@ namespace Microsoft.Bot.Builder.Integration.AspNet.WebApi
 
                     if (string.IsNullOrWhiteSpace(authHeader))
                     {
-                        WriteUnauthorizedResponse(AuthHeaderName, httpRequest, httpResponse);
+                        WriteUnauthorizedResponse(AuthHeaderName, httpResponse);
                         return false;
                     }
 
                     if (string.IsNullOrWhiteSpace(channelId))
                     {
-                        WriteUnauthorizedResponse(ChannelIdHeaderName, httpRequest, httpResponse);
+                        WriteUnauthorizedResponse(ChannelIdHeaderName, httpResponse);
                         return false;
                     }
 
@@ -174,7 +200,7 @@ namespace Microsoft.Bot.Builder.Integration.AspNet.WebApi
                         httpResponse.StatusCode = HttpStatusCode.Unauthorized;
                         return false;
                     }
-                    
+
                     // Add ServiceURL to the cache of trusted sites in order to allow token refreshing.
                     AppCredentials.TrustServiceUrl(claimsIdentity.FindFirst(AuthenticationConstants.ServiceUrlClaim).Value);
                     ClaimsIdentity = claimsIdentity;
@@ -182,19 +208,12 @@ namespace Microsoft.Bot.Builder.Integration.AspNet.WebApi
 
                 return true;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 httpResponse.StatusCode = HttpStatusCode.InternalServerError;
                 httpResponse.Content = new StringContent("Error while attempting to authorize connection.");
-
-                throw ex;
+                throw;
             }
-        }
-
-        private void WriteUnauthorizedResponse(string headerName, HttpRequestMessage httpRequest, HttpResponseMessage httpResponse)
-        {
-            httpResponse.StatusCode = HttpStatusCode.Unauthorized;
-            httpResponse.Content = new StringContent($"Unable to authenticate. Missing header: {headerName}");
         }
     }
 }

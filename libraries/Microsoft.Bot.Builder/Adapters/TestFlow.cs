@@ -97,7 +97,7 @@ namespace Microsoft.Bot.Builder.Adapters
         {
             if (userSays == null)
             {
-                throw new ArgumentNullException("You have to pass a userSays parameter");
+                throw new ArgumentNullException(nameof(userSays), "You have to pass a userSays parameter");
             }
 
             return new TestFlow(
@@ -110,6 +110,10 @@ namespace Microsoft.Bot.Builder.Adapters
                 this);
         }
 
+        /// <summary>
+        /// Creates a conversation update activity and process it the activity.
+        /// </summary>
+        /// <returns>A new <see cref="TestFlow"/> object.</returns>
         public TestFlow SendConversationUpdate()
         {
             return new TestFlow(
@@ -145,7 +149,7 @@ namespace Microsoft.Bot.Builder.Adapters
         {
             if (userActivity == null)
             {
-                throw new ArgumentNullException("You have to pass an Activity");
+                throw new ArgumentNullException(nameof(userActivity), "You have to pass an Activity");
             }
 
             return new TestFlow(
@@ -288,7 +292,7 @@ namespace Microsoft.Bot.Builder.Adapters
                     }
                     else
                     {
-                        if (expected.AsMessageActivity().Text.Trim() != reply.AsMessageActivity().Text.Trim())
+                        if (expected.AsMessageActivity().Text?.Trim() != reply.AsMessageActivity().Text?.Trim())
                         {
                             if (description == null)
                             {
@@ -314,7 +318,9 @@ namespace Microsoft.Bot.Builder.Adapters
         /// <param name="timeout">The amount of time in milliseconds within which a response is expected.</param>
         /// <returns>A new <see cref="TestFlow"/> object that appends this assertion to the modeled exchange.</returns>
         /// <remarks>This method does not modify the original <see cref="TestFlow"/> object.</remarks>
+#pragma warning disable CA1801 // Review unused parameters (we can't remove this withouth breaking binary compat)
         public TestFlow AssertReply(Action<IActivity> validateActivity, [CallerMemberName] string description = null, uint timeout = 3000)
+#pragma warning restore CA1801 // Review unused parameters
         {
             return new TestFlow(
                 async () =>
@@ -530,9 +536,9 @@ namespace Microsoft.Bot.Builder.Adapters
                 timeout);
         }
 
-        private bool IsReply(IActivity activity)
+        private static bool IsReply(IActivity activity)
         {
-            return string.Equals("bot", activity.From?.Role, StringComparison.InvariantCultureIgnoreCase);
+            return string.Equals("bot", activity.From?.Role, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

@@ -6,6 +6,7 @@
     <PackageVersion Condition=" '$(IsBuildServer)' != '' ">$(ReleasePackageVersion)</PackageVersion>
     <Configurations>Debug;Release</Configurations>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <DocumentationFile>bin\$(Configuration)\netstandard2.0\Microsoft.Bot.Schema.xml</DocumentationFile>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -14,21 +15,17 @@
     <Summary>This library implements C# schema classes for using the Bot Framework.</Summary>
   </PropertyGroup>
 
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DocumentationFile>bin\$(Configuration)\netstandard2.0\Microsoft.Bot.Schema.xml</DocumentationFile>
-  </PropertyGroup>
-
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <DebugType>Full</DebugType>
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
 
   <PropertyGroup>
-    <NoWarn>$(NoWarn);CS0108</NoWarn>
+    <!-- SX1309: FieldNamesShouldBeginWithUnderscores should be fixed as part of https://github.com/microsoft/botframework-sdk/issues/5933 -->
+    <NoWarn>$(NoWarn);SX1309</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All"/>
   </ItemGroup>
 </Project>

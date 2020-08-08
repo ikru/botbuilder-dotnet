@@ -10,13 +10,23 @@ namespace Microsoft.Bot.Builder.LanguageGeneration
     /// </summary>
     public class SourceRange
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SourceRange"/> class.
+        /// </summary>
+        /// <param name="parseTree">Rule invocation record for parsing.</param>
+        /// <param name="source">Source, used as the lg file path.</param>
+        /// <param name="offset">Offset in the parse tree.</param>
         public SourceRange(ParserRuleContext parseTree, string source = "", int offset = 0)
         {
             this.Source = source ?? string.Empty;
-            this.ParseTree = parseTree;
             this.Range = parseTree.ConvertToRange(offset);
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SourceRange"/> class.
+        /// </summary>
+        /// <param name="range">Range of the block.</param>
+        /// <param name="source">Source, used as the lg file path.</param>
         public SourceRange(Range range, string source = "")
         {
             this.Range = range;
@@ -38,13 +48,5 @@ namespace Microsoft.Bot.Builder.LanguageGeneration
         /// Code source, used as the lg file path.
         /// </value>
         public string Source { get; set; }
-
-        /// <summary>
-        /// Gets or sets content parse tree form LGFileParser.g4.
-        /// </summary>
-        /// <value>
-        /// Content parse tree form LGFileParser.g4.
-        /// </value>
-        public ParserRuleContext ParseTree { get; set; }
     }
 }

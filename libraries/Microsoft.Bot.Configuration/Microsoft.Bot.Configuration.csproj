@@ -6,6 +6,7 @@
     <PackageVersion Condition=" '$(IsBuildServer)' != '' ">$(ReleasePackageVersion)</PackageVersion>
     <Configurations>Debug;Release;</Configurations>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <DocumentationFile>bin\$(Configuration)\netstandard2.0\Microsoft.Bot.Configuration.xml</DocumentationFile>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -14,19 +15,13 @@
     <Description>Classes for loading and saving bot configuration files</Description>
   </PropertyGroup>
 
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DocumentationFile>bin\$(Configuration)\netstandard2.0\Microsoft.Bot.Configuration.xml</DocumentationFile>
-  </PropertyGroup>
-
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <DebugType>Full</DebugType>
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AsyncUsageAnalyzers" Version="1.0.0-alpha003" PrivateAssets="all" />
     <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All"/>
     <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.1" />
   </ItemGroup>
 

@@ -6,6 +6,7 @@
     <PackageVersion Condition=" '$(IsBuildServer)' != '' ">$(ReleasePackageVersion)</PackageVersion>
     <Configurations>Debug;Release</Configurations>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <DocumentationFile>bin\$(Configuration)\netstandard2.0\Microsoft.Bot.Builder.AI.Luis.xml</DocumentationFile>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -14,10 +15,6 @@
     <Description>LUIS Middleware and Recognizers for the Microsoft Bot Builder SDK</Description>
     <Summary>This library implements C# classes for building bots using LUIS.</Summary>
     <ContentTargetFolders>content</ContentTargetFolders>
-  </PropertyGroup>
-
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DocumentationFile>bin\$(Configuration)\netstandard2.0\Microsoft.Bot.Builder.AI.Luis.xml</DocumentationFile>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -30,15 +27,14 @@
     <Content Include="**/*.lg" />
     <Content Include="**/*.lu" />
     <Content Include="**/*.schema" />
-    <Content Include="**/*.qna"/>
+    <Content Include="**/*.uischema" />
+    <Content Include="**/*.qna" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AsyncUsageAnalyzers" Version="1.0.0-alpha003" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="2.1.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="2.1.0" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
     <PackageReference Include="Microsoft.Azure.CognitiveServices.Language.LUIS.Runtime" Version="2.1.0" />
     <PackageReference Include="Microsoft.Bot.Builder.Dialogs.Declarative" Condition=" '$(IsBuildServer)' == '' " Version="$(LocalPackageVersion)" />
     <PackageReference Include="Microsoft.Bot.Builder.Dialogs.Declarative" Condition=" '$(IsBuildServer)' != '' " Version="$(ReleasePackageVersion)" />

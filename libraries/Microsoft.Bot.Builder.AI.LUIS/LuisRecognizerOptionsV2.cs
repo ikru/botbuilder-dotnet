@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license.
 
-using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,10 +10,12 @@ using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.TraceExtensions;
 using Microsoft.Bot.Schema;
 using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Serialization;
 
 namespace Microsoft.Bot.Builder.AI.Luis
 {
+    /// <summary>
+    /// Options for <see cref="LuisRecognizerOptionsV2"/>.
+    /// </summary>
     public class LuisRecognizerOptionsV2 : LuisRecognizerOptions
     {
         /// <summary>
@@ -60,30 +61,24 @@ namespace Microsoft.Bot.Builder.AI.Luis
 
             if (string.IsNullOrWhiteSpace(utterance))
             {
-                recognizerResult = new RecognizerResult
-                {
-                    Text = utterance,
-                    Intents = new Dictionary<string, IntentScore>() { { string.Empty, new IntentScore() { Score = 1.0 } } },
-                    Entities = new JObject(),
-                };
+                recognizerResult = new RecognizerResult { Text = utterance };
             }
             else
             {
                 var credentials = new ApiKeyServiceClientCredentials(Application.EndpointKey);
-                var runtime = new LUISRuntimeClient(credentials, httpClient, false)
+                using (var runtime = new LUISRuntimeClient(credentials, httpClient, false) { Endpoint = Application.Endpoint })
                 {
-                    Endpoint = Application.Endpoint,
-                };
-                luisResult = await runtime.Prediction.ResolveAsync(
-                    Application.ApplicationId,
-                    utterance,
-                    timezoneOffset: PredictionOptions.TimezoneOffset,
-                    verbose: PredictionOptions.IncludeAllIntents,
-                    staging: PredictionOptions.Staging,
-                    spellCheck: PredictionOptions.SpellCheck,
-                    bingSpellCheckSubscriptionKey: PredictionOptions.BingSpellCheckSubscriptionKey,
-                    log: PredictionOptions.Log ?? true,
-                    cancellationToken: cancellationToken).ConfigureAwait(false);
+                    luisResult = await runtime.Prediction.ResolveAsync(
+                        Application.ApplicationId,
+                        utterance,
+                        timezoneOffset: PredictionOptions.TimezoneOffset,
+                        verbose: PredictionOptions.IncludeAllIntents,
+                        staging: PredictionOptions.Staging,
+                        spellCheck: PredictionOptions.SpellCheck,
+                        bingSpellCheckSubscriptionKey: PredictionOptions.BingSpellCheckSubscriptionKey,
+                        log: PredictionOptions.Log ?? true,
+                        cancellationToken: cancellationToken).ConfigureAwait(false);
+                }
 
                 recognizerResult = new RecognizerResult
                 {

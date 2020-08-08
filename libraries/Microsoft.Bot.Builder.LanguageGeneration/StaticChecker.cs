@@ -15,20 +15,20 @@ namespace Microsoft.Bot.Builder.LanguageGeneration
     /// </summary>
     internal class StaticChecker : LGTemplateParserBaseVisitor<List<Diagnostic>>
     {
-        private readonly ExpressionParser baseExpressionParser;
-        private readonly Templates templates;
-        private Template currentTemplate;
+        private readonly ExpressionParser _baseExpressionParser;
+        private readonly Templates _templates;
+        private Template _currentTemplate;
 
         private IExpressionParser _expressionParser;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="StaticChecker"/> class.
         /// </summary>
-        /// <param name="templates">The templates wihch would be checked.</param>
+        /// <param name="templates">Templates wihch would be checked.</param>
         public StaticChecker(Templates templates)
         {
-            this.templates = templates;
-            baseExpressionParser = templates.ExpressionParser;
+            _templates = templates;
+            _baseExpressionParser = templates.ExpressionParser;
         }
 
         // Create a property because we want this to be lazy loaded
@@ -39,7 +39,7 @@ namespace Microsoft.Bot.Builder.LanguageGeneration
                 if (_expressionParser == null)
                 {
                     // create an evaluator to leverage it's customized function look up for checking
-                    var evaluator = new Evaluator(templates.AllTemplates.ToList(), baseExpressionParser);
+                    var evaluator = new Evaluator(_templates.AllTemplates.ToList(), _baseExpressionParser);
                     _expressionParser = evaluator.ExpressionParser;
                 }
 
@@ -48,34 +48,34 @@ namespace Microsoft.Bot.Builder.LanguageGeneration
         }
 
         /// <summary>
-        /// Return error messages list.
+        /// Returns a list of Diagnostic instances.
         /// </summary>
         /// <returns>Report result.</returns>
         public List<Diagnostic> Check()
         {
             var result = new List<Diagnostic>();
 
-            if (templates.AllTemplates.Count == 0)
+            if (_templates.AllTemplates.Count == 0)
             {
-                var diagnostic = new Diagnostic(Range.DefaultRange, TemplateErrors.NoTemplate, DiagnosticSeverity.Warning, templates.Id);
+                var diagnostic = new Diagnostic(Range.DefaultRange, TemplateErrors.NoTemplate, DiagnosticSeverity.Warning, _templates.Id);
                 result.Add(diagnostic);
                 return result;
             }
 
-            foreach (var template in templates)
+            foreach (var template in _templates)
             {
-                currentTemplate = template;
+                _currentTemplate = template;
                 var templateDiagnostics = new List<Diagnostic>();
 
                 // checker duplicated in different files
-                foreach (var reference in templates.References)
+                foreach (var reference in _templates.References)
                 {
                     var sameTemplates = reference.Where(u => u.Name == template.Name);
                     foreach (var sameTemplate in sameTemplates)
                     {
                         var startLine = template.SourceRange.Range.Start.Line;
                         var range = new Range(startLine, 0, startLine, template.Name.Length + 1);
-                        var diagnostic = new Diagnostic(range, TemplateErrors.DuplicatedTemplateInDiffTemplate(sameTemplate.Name, sameTemplate.SourceRange.Source), source: templates.Id);
+                        var diagnostic = new Diagnostic(range, TemplateErrors.DuplicatedTemplateInDiffTemplate(sameTemplate.Name, sameTemplate.SourceRange.Source), source: _templates.Id);
                         templateDiagnostics.Add(diagnostic);
                     }
                 }
@@ -146,9 +146,9 @@ namespace Microsoft.Bot.Builder.LanguageGeneration
                 {
                     foreach (var body in bodys)
                     {
-                        if (body.objectStructureLine() != null)
+                        if (body.expressionInStructure() != null)
                         {
-                            result.AddRange(CheckExpression(body.objectStructureLine().GetText(), body.objectStructureLine()));
+                            result.AddRange(CheckExpression(body.expressionInStructure()));
                         }
                         else
                         {
@@ -157,9 +157,9 @@ namespace Microsoft.Bot.Builder.LanguageGeneration
                             var errorPrefix = "Property '" + body.keyValueStructureLine().STRUCTURE_IDENTIFIER().GetText() + "':";
                             foreach (var structureValue in structureValues)
                             {
-                                foreach (var expression in structureValue.EXPRESSION_IN_STRUCTURE_BODY())
+                                foreach (var expression in structureValue.expressionInStructure())
                                 {
-                                    result.AddRange(CheckExpression(expression.GetText(), structureValue, errorPrefix));
+                                    result.AddRange(CheckExpression(expression, errorPrefix));
                                 }
                             }
                         }
@@ -214,19 +214,19 @@ namespace Microsoft.Bot.Builder.LanguageGeneration
                 // check rule should should with one and only expression
                 if (!elseExpr)
                 {
-                    if (ifRules[idx].ifCondition().EXPRESSION().Length != 1)
+                    if (ifRules[idx].ifCondition().expression().Length != 1)
                     {
                         result.Add(BuildLGDiagnostic(TemplateErrors.InvalidExpressionInCondition, context: conditionNode));
                     }
                     else
                     {
-                        var errorPrefix = "Condition '" + conditionNode.EXPRESSION(0).GetText() + "': ";
-                        result.AddRange(CheckExpression(conditionNode.EXPRESSION(0).GetText(), conditionNode, errorPrefix));
+                        var errorPrefix = "Condition '" + conditionNode.expression(0).GetText() + "': ";
+                        result.AddRange(CheckExpression(conditionNode.expression(0), errorPrefix));
                     }
                 }
                 else
                 {
-                    if (ifRules[idx].ifCondition().EXPRESSION().Length != 0)
+                    if (ifRules[idx].ifCondition().expression().Length != 0)
                     {
                         result.Add(BuildLGDiagnostic(TemplateErrors.ExtraExpressionInCondition, context: conditionNode));
                     }
@@ -297,20 +297,20 @@ namespace Microsoft.Bot.Builder.LanguageGeneration
 
                 if (switchExpr || caseExpr)
                 {
-                    if (switchCaseNode.EXPRESSION().Length != 1)
+                    if (switchCaseNode.expression().Length != 1)
                     {
                         result.Add(BuildLGDiagnostic(TemplateErrors.InvalidExpressionInSwiathCase, context: switchCaseNode));
                     }
                     else
                     {
                         var errorPrefix = switchExpr ? "Switch" : "Case";
-                        errorPrefix += " '" + switchCaseNode.EXPRESSION(0).GetText() + "': ";
-                        result.AddRange(CheckExpression(switchCaseNode.EXPRESSION(0).GetText(), switchCaseNode, errorPrefix));
+                        errorPrefix += " '" + switchCaseNode.expression(0).GetText() + "': ";
+                        result.AddRange(CheckExpression(switchCaseNode.expression(0), errorPrefix));
                     }
                 }
                 else
                 {
-                    if (switchCaseNode.EXPRESSION().Length != 0 || switchCaseNode.TEXT().Length != 0)
+                    if (switchCaseNode.expression().Length != 0 || switchCaseNode.TEXT().Length != 0)
                     {
                         result.Add(BuildLGDiagnostic(TemplateErrors.ExtraExpressionInSwitchCase, context: switchCaseNode));
                     }
@@ -337,9 +337,9 @@ namespace Microsoft.Bot.Builder.LanguageGeneration
             var prefixErrorMsg = context.GetPrefixErrorMessage();
             var result = new List<Diagnostic>();
 
-            foreach (var expression in context.EXPRESSION())
+            foreach (var expression in context.expression())
             {
-                result.AddRange(CheckExpression(expression.GetText(), context, prefixErrorMsg));
+                result.AddRange(CheckExpression(expression, prefixErrorMsg));
             }
 
             var multiLinePrefix = context.MULTILINE_PREFIX();
@@ -353,12 +353,13 @@ namespace Microsoft.Bot.Builder.LanguageGeneration
             return result;
         }
 
-        private List<Diagnostic> CheckExpression(string exp, ParserRuleContext context, string prefix = "")
+        private List<Diagnostic> CheckExpression(ParserRuleContext expressionContext, string prefix = "")
         {
+            var exp = expressionContext.GetText();
             var result = new List<Diagnostic>();
-            if (!exp.EndsWith("}"))
+            if (!exp.EndsWith("}", StringComparison.Ordinal))
             {
-                result.Add(BuildLGDiagnostic(TemplateErrors.NoCloseBracket, context: context));
+                result.Add(BuildLGDiagnostic(TemplateErrors.NoCloseBracket, context: expressionContext));
             }
             else
             {
@@ -368,12 +369,14 @@ namespace Microsoft.Bot.Builder.LanguageGeneration
                 {
                     ExpressionParser.Parse(exp);
                 }
+#pragma warning disable CA1031 // Do not catch general exception types (catch any exception and return it in the result)
                 catch (Exception e)
+#pragma warning restore CA1031 // Do not catch general exception types
                 {
                     var suffixErrorMsg = Evaluator.ConcatErrorMsg(TemplateErrors.ExpressionParseError(exp), e.Message);
                     var errorMsg = Evaluator.ConcatErrorMsg(prefix, suffixErrorMsg);
 
-                    result.Add(BuildLGDiagnostic(errorMsg, context: context));
+                    result.Add(BuildLGDiagnostic(errorMsg, context: expressionContext));
                     return result;
                 }
             }
@@ -386,15 +389,15 @@ namespace Microsoft.Bot.Builder.LanguageGeneration
             DiagnosticSeverity severity = DiagnosticSeverity.Error,
             ParserRuleContext context = null)
         {
-            var lineOffset = this.currentTemplate != null ? this.currentTemplate.SourceRange.Range.Start.Line : 0;
+            var lineOffset = _currentTemplate != null ? _currentTemplate.SourceRange.Range.Start.Line : 0;
             var templateNameInfo = string.Empty;
-            if (this.currentTemplate != null && this.currentTemplate.Name != Templates.InlineTemplateId)
+            if (_currentTemplate != null && _currentTemplate.Name.StartsWith(Templates.InlineTemplateIdPrefix, StringComparison.InvariantCulture))
             {
-                templateNameInfo = $"[{this.currentTemplate.Name}]";
+                templateNameInfo = $"[{_currentTemplate.Name}]";
             }
 
             var range = context == null ? new Range(1 + lineOffset, 0, 1 + lineOffset, 0) : context.ConvertToRange(lineOffset);
-            return new Diagnostic(range, templateNameInfo + message, severity, templates.Id);
+            return new Diagnostic(range, templateNameInfo + message, severity, _templates.Id);
         }
     }
 }

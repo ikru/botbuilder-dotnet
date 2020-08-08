@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
@@ -14,45 +15,25 @@ namespace Microsoft.Bot.Builder.LanguageGeneration
     /// </summary>
     public static partial class Extensions
     {
+        /// <summary>
+        /// Regular expression for matching escaped characters.
+        /// </summary>
         public static readonly Regex EscapeRegex = new Regex(@"\\[^\r\n]?");
 
         /// <summary>
         /// If a value is pure Expression.
         /// </summary>
         /// <param name="context">Key value structure value context.</param>
-        /// <param name="expression">String expression.</param>
         /// <returns>Is pure expression or not.</returns>
-        public static bool IsPureExpression(this LGTemplateParser.KeyValueStructureValueContext context, out string expression)
+        public static bool IsPureExpression(this LGTemplateParser.KeyValueStructureValueContext context)
         {
-            expression = context.GetText();
-
-            var hasExpression = false;
-            foreach (ITerminalNode node in context.children)
+            if (context.expressionInStructure() == null
+                || context.expressionInStructure().Length != 1)
             {
-                switch (node.Symbol.Type)
-                {
-                    case LGTemplateParser.ESCAPE_CHARACTER_IN_STRUCTURE_BODY:
-                        return false;
-                    case LGTemplateParser.EXPRESSION_IN_STRUCTURE_BODY:
-                        if (hasExpression)
-                        {
-                            return false;
-                        }
-
-                        hasExpression = true;
-                        expression = node.GetText();
-                        break;
-                    default:
-                        if (!string.IsNullOrWhiteSpace(node.GetText()))
-                        {
-                            return false;
-                        }
-
-                        break;
-                }
+                return false;
             }
 
-            return hasExpression;
+            return context.expressionInStructure(0).GetText().Trim() == context.GetText().Trim();
         }
 
         /// <summary>
@@ -99,7 +80,7 @@ namespace Microsoft.Bot.Builder.LanguageGeneration
         {
             var result = expression.Trim().TrimStart('$').Trim();
 
-            if (result.StartsWith("{") && result.EndsWith("}"))
+            if (result.StartsWith("{", StringComparison.Ordinal) && result.EndsWith("}", StringComparison.Ordinal))
             {
                 result = result.Substring(1, result.Length - 2);
             }
@@ -141,7 +122,7 @@ namespace Microsoft.Bot.Builder.LanguageGeneration
             var errorPrefix = string.Empty;
             if (context.Parent?.Parent?.Parent is LGTemplateParser.IfConditionRuleContext conditionContext)
             {
-                errorPrefix = "Condition '" + conditionContext.ifCondition()?.EXPRESSION(0)?.GetText() + "': ";
+                errorPrefix = "Condition '" + conditionContext.ifCondition()?.expression(0)?.GetText() + "': ";
             }
             else
             {
@@ -154,11 +135,11 @@ namespace Microsoft.Bot.Builder.LanguageGeneration
                     }
                     else if (state?.SWITCH() != null)
                     {
-                        errorPrefix = $"Switch '{state.EXPRESSION(0)?.GetText()}':";
+                        errorPrefix = $"Switch '{state.expression(0)?.GetText()}':";
                     }
                     else if (state?.CASE() != null)
                     {
-                        errorPrefix = $"Case '{state.EXPRESSION(0)?.GetText()}':";
+                        errorPrefix = $"Case '{state.expression(0)?.GetText()}':";
                     }
                 }
             }
@@ -172,7 +153,7 @@ namespace Microsoft.Bot.Builder.LanguageGeneration
         /// <param name="context">Antlr parse context.</param>
         /// <param name="lineOffset">Line offset.</param>
         /// <returns>Range object.</returns>
-        public static Range ConvertToRange(this ParserRuleContext context, int lineOffset = 0)
+        internal static Range ConvertToRange(this ParserRuleContext context, int lineOffset = 0)
         {
             if (context == null)
             {

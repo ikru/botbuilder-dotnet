@@ -20,15 +20,15 @@ namespace Microsoft.Bot.Builder
     /// </remarks>
     public class FileTranscriptLogger : ITranscriptStore
     {
-        private static JsonSerializerSettings jsonSettings = new JsonSerializerSettings()
+        private static readonly JsonSerializerSettings _jsonSettings = new JsonSerializerSettings()
         {
             Formatting = Formatting.Indented,
             NullValueHandling = NullValueHandling.Ignore,
         };
 
-        private string folder;
-        private bool unitTestMode;
-        private HashSet<string> started = new HashSet<string>();
+        private readonly string _folder;
+        private readonly bool _unitTestMode;
+        private readonly HashSet<string> _started = new HashSet<string>();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FileTranscriptLogger"/> class.
@@ -49,8 +49,8 @@ namespace Microsoft.Bot.Builder
                 Directory.CreateDirectory(folder);
             }
 
-            this.folder = folder;
-            this.unitTestMode = unitTestMode;
+            this._folder = folder;
+            this._unitTestMode = unitTestMode;
         }
 
         /// <summary>
@@ -62,7 +62,7 @@ namespace Microsoft.Bot.Builder
         {
             if (activity == null)
             {
-                throw new ArgumentNullException(nameof(Activity));
+                throw new ArgumentNullException(nameof(activity));
             }
 
             var transcriptFile = GetTranscriptFile(activity.ChannelId, activity.Conversation.Id);
@@ -81,46 +81,55 @@ namespace Microsoft.Bot.Builder
             {
                 try
                 {
-                    if ((this.unitTestMode == true && !started.Contains(transcriptFile)) || !File.Exists(transcriptFile))
+                    if ((this._unitTestMode == true && !_started.Contains(transcriptFile)) || !File.Exists(transcriptFile))
                     {
-                        System.Diagnostics.Trace.TraceInformation($"file://{transcriptFile.Replace("\\", "/")}");
-                        started.Add(transcriptFile);
-                        List<Activity> transcript = new List<Activity>() { (Activity)activity };
+                        Trace.TraceInformation($"file://{transcriptFile.Replace("\\", "/")}");
+                        _started.Add(transcriptFile);
+
                         using (var stream = File.OpenWrite(transcriptFile))
                         {
                             using (var writer = new StreamWriter(stream) as TextWriter)
                             {
-                                await writer.WriteAsync($"[{JsonConvert.SerializeObject(activity, jsonSettings)}]").ConfigureAwait(false);
+                                await writer.WriteAsync($"[{JsonConvert.SerializeObject(activity, _jsonSettings)}]").ConfigureAwait(false);
                                 return;
                             }
                         }
                     }
-                    else
+
+                    switch (activity.Type)
                     {
-                        switch (activity.Type)
-                        {
-                            case ActivityTypes.MessageDelete:
-                                await MessageDeleteAsync(activity, transcriptFile).ConfigureAwait(false);
-                                return;
+                        case ActivityTypes.MessageDelete:
+                            await MessageDeleteAsync(activity, transcriptFile).ConfigureAwait(false);
+                            return;
 
-                            case ActivityTypes.MessageUpdate:
-                                await MessageUpdateAsync(activity, transcriptFile).ConfigureAwait(false);
-                                return;
+                        case ActivityTypes.MessageUpdate:
+                            await MessageUpdateAsync(activity, transcriptFile).ConfigureAwait(false);
+                            return;
 
-                            default:
-                                // append
-                                await LogActivityAsync(activity, transcriptFile).ConfigureAwait(false);
-                                return;
-                        }
+                        default:
+                            // append
+                            await LogActivityAsync(activity, transcriptFile).ConfigureAwait(false);
+                            return;
                     }
                 }
+#pragma warning disable CA1031 // Do not catch general exception types (we ignore the exception and we retry)
                 catch (Exception)
+#pragma warning restore CA1031 // Do not catch general exception types
                 {
                     // try again
                 }
             }
         }
 
+        /// <summary>
+        /// Gets from the store activities that match a set of criteria.
+        /// </summary>
+        /// <param name="channelId">The ID of the channel the conversation is in.</param>
+        /// <param name="conversationId">The ID of the conversation.</param>
+        /// <param name="continuationToken">The continuation token (if available).</param>
+        /// <param name="startDate">A cutoff date. Activities older than this date are not included.</param>
+        /// <returns>A task that represents the work queued to execute.</returns>
+        /// <remarks>If the task completes successfully, the result contains the matching activities.</remarks>
         public async Task<PagedResult<IActivity>> GetTranscriptActivitiesAsync(string channelId, string conversationId, string continuationToken = null, DateTimeOffset startDate = default(DateTimeOffset))
         {
             var transcriptFile = GetTranscriptFile(channelId, conversationId);
@@ -132,6 +141,13 @@ namespace Microsoft.Bot.Builder
             return result;
         }
 
+        /// <summary>
+        /// Gets the conversations on a channel from the store.
+        /// </summary>
+        /// <param name="channelId">The ID of the channel.</param>
+        /// <param name="continuationToken">Continuation token (if available).</param>
+        /// <returns>A task that represents the work queued to execute.</returns>
+        /// <remarks>List all transcripts for given ChannelID.</remarks>
         public Task<PagedResult<TranscriptInfo>> ListTranscriptsAsync(string channelId, string continuationToken = null)
         {
             List<TranscriptInfo> transcripts = new List<TranscriptInfo>();
@@ -154,6 +170,12 @@ namespace Microsoft.Bot.Builder
             });
         }
 
+        /// <summary>
+        /// Deletes conversation data from the store.
+        /// </summary>
+        /// <param name="channelId">The ID of the channel the conversation is in.</param>
+        /// <param name="conversationId">The ID of the conversation to delete.</param>
+        /// <returns>A task that represents the work queued to execute.</returns>
         public Task DeleteTranscriptAsync(string channelId, string conversationId)
         {
             var transcriptFile = GetTranscriptFile(channelId, conversationId);
@@ -176,6 +198,91 @@ namespace Microsoft.Bot.Builder
             }
 
             return Array.Empty<Activity>();
+        }
+
+        private static async Task LogActivityAsync(IActivity activity, string transcriptFile)
+        {
+            var json = $",\n{JsonConvert.SerializeObject(activity, _jsonSettings)}]";
+
+            using (var stream = File.Open(transcriptFile, FileMode.OpenOrCreate))
+            {
+                if (stream.Length > 0)
+                {
+                    stream.Seek(-1, SeekOrigin.End);
+                }
+
+                using (TextWriter writer = new StreamWriter(stream))
+                {
+                    await writer.WriteAsync(json).ConfigureAwait(false);
+                }
+            }
+        }
+
+        private static async Task MessageUpdateAsync(IActivity activity, string transcriptFile)
+        {
+            // load all activities
+            var transcript = await LoadTranscriptAsync(transcriptFile).ConfigureAwait(false);
+
+            for (int i = 0; i < transcript.Length; i++)
+            {
+                var originalActivity = transcript[i];
+                if (originalActivity.Id == activity.Id)
+                {
+                    var updatedActivity = JsonConvert.DeserializeObject<Activity>(JsonConvert.SerializeObject(activity));
+                    updatedActivity.Type = originalActivity.Type; // fixup original type (should be Message)
+                    updatedActivity.LocalTimestamp = originalActivity.LocalTimestamp;
+                    updatedActivity.Timestamp = originalActivity.Timestamp;
+                    transcript[i] = updatedActivity;
+                    var json = JsonConvert.SerializeObject(transcript, _jsonSettings);
+                    using (var stream = File.OpenWrite(transcriptFile))
+                    {
+                        using (var writer = new StreamWriter(stream) as TextWriter)
+                        {
+                            await writer.WriteAsync(json).ConfigureAwait(false);
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+        private static async Task MessageDeleteAsync(IActivity activity, string transcriptFile)
+        {
+            // load all activities
+            var transcript = await LoadTranscriptAsync(transcriptFile).ConfigureAwait(false);
+
+            // if message delete comes in, delete the message from the transcript
+            for (int index = 0; index < transcript.Length; index++)
+            {
+                var originalActivity = transcript[index];
+                if (originalActivity.Id == activity.Id)
+                {
+                    // tombstone the original message
+                    transcript[index] = new Activity()
+                    {
+                        Type = ActivityTypes.MessageDelete,
+                        Id = originalActivity.Id,
+                        From = new ChannelAccount(id: "deleted", role: originalActivity.From.Role),
+                        Recipient = new ChannelAccount(id: "deleted", role: originalActivity.Recipient.Role),
+                        Locale = originalActivity.Locale,
+                        LocalTimestamp = originalActivity.Timestamp,
+                        Timestamp = originalActivity.Timestamp,
+                        ChannelId = originalActivity.ChannelId,
+                        Conversation = originalActivity.Conversation,
+                        ServiceUrl = originalActivity.ServiceUrl,
+                        ReplyToId = originalActivity.ReplyToId,
+                    };
+                    var json = JsonConvert.SerializeObject(transcript, _jsonSettings);
+                    using (var stream = File.OpenWrite(transcriptFile))
+                    {
+                        using (var writer = new StreamWriter(stream) as TextWriter)
+                        {
+                            await writer.WriteAsync(json).ConfigureAwait(false);
+                            return;
+                        }
+                    }
+                }
+            }
         }
 
         private string GetTranscriptFile(string channelId, string conversationId)
@@ -202,98 +309,13 @@ namespace Microsoft.Bot.Builder
                 throw new ArgumentNullException(channelId);
             }
 
-            var channelFolder = Path.Combine(folder, channelId);
+            var channelFolder = Path.Combine(_folder, channelId);
             if (!Directory.Exists(channelFolder))
             {
                 Directory.CreateDirectory(channelFolder);
             }
 
             return channelFolder;
-        }
-
-        private async Task LogActivityAsync(IActivity activity, string transcriptFile)
-        {
-            var json = $",\n{JsonConvert.SerializeObject(activity, jsonSettings)}]";
-
-            using (var stream = File.Open(transcriptFile, FileMode.OpenOrCreate))
-            {
-                if (stream.Length > 0)
-                {
-                    stream.Seek(-1, SeekOrigin.End);
-                }
-
-                using (TextWriter writer = new StreamWriter(stream))
-                {
-                    await writer.WriteAsync(json).ConfigureAwait(false);
-                }
-            }
-        }
-
-        private async Task MessageUpdateAsync(IActivity activity, string transcriptFile)
-        {
-            // load all activities
-            var transcript = await LoadTranscriptAsync(transcriptFile).ConfigureAwait(false);
-
-            for (int i = 0; i < transcript.Length; i++)
-            {
-                var originalActivity = transcript[i];
-                if (originalActivity.Id == activity.Id)
-                {
-                    var updatedActivity = JsonConvert.DeserializeObject<Activity>(JsonConvert.SerializeObject(activity));
-                    updatedActivity.Type = originalActivity.Type; // fixup original type (should be Message)
-                    updatedActivity.LocalTimestamp = originalActivity.LocalTimestamp;
-                    updatedActivity.Timestamp = originalActivity.Timestamp;
-                    transcript[i] = updatedActivity;
-                    var json = JsonConvert.SerializeObject(transcript, jsonSettings);
-                    using (var stream = File.OpenWrite(transcriptFile))
-                    {
-                        using (var writer = new StreamWriter(stream) as TextWriter)
-                        {
-                            await writer.WriteAsync(json).ConfigureAwait(false);
-                            return;
-                        }
-                    }
-                }
-            }
-        }
-
-        private async Task MessageDeleteAsync(IActivity activity, string transcriptFile)
-        {
-            // load all activities
-            var transcript = await LoadTranscriptAsync(transcriptFile).ConfigureAwait(false);
-
-            // if message delete comes in, delete the message from the transcript
-            for (int index = 0; index < transcript.Length; index++)
-            {
-                var originalActivity = transcript[index];
-                if (originalActivity.Id == activity.Id)
-                {
-                    // tombstone the original message
-                    transcript[index] = new Activity()
-                    {
-                        Type = ActivityTypes.MessageDelete,
-                        Id = originalActivity.Id,
-                        From = new ChannelAccount(id: "deleted", role: originalActivity.From.Role),
-                        Recipient = new ChannelAccount(id: "deleted", role: originalActivity.Recipient.Role),
-                        Locale = originalActivity.Locale,
-                        LocalTimestamp = originalActivity.Timestamp,
-                        Timestamp = originalActivity.Timestamp,
-                        ChannelId = originalActivity.ChannelId,
-                        Conversation = originalActivity.Conversation,
-                        ServiceUrl = originalActivity.ServiceUrl,
-                        ReplyToId = originalActivity.ReplyToId,
-                    };
-                    var json = JsonConvert.SerializeObject(transcript, jsonSettings);
-                    using (var stream = File.OpenWrite(transcriptFile))
-                    {
-                        using (var writer = new StreamWriter(stream) as TextWriter)
-                        {
-                            await writer.WriteAsync(json).ConfigureAwait(false);
-                            return;
-                        }
-                    }
-                }
-            }
         }
     }
 }

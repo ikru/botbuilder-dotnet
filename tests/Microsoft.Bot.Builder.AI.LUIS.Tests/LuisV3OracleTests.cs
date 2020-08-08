@@ -48,7 +48,7 @@ namespace Microsoft.Bot.Builder.AI.Luis.Tests
             };
             var recognizerWithTimeout = new LuisRecognizer(options);
             Assert.IsNotNull(recognizerWithTimeout);
-            Assert.AreEqual(expectedTimeout, LuisRecognizer.DefaultHttpClient.Timeout.Milliseconds);
+            Assert.AreEqual(expectedTimeout, recognizerWithTimeout.HttpClient.Timeout.Milliseconds);
         }
 
         [TestMethod]
@@ -108,9 +108,7 @@ namespace Microsoft.Bot.Builder.AI.Luis.Tests
             Assert.IsNull(result.AlteredText);
             Assert.AreEqual(utterance, result.Text);
             Assert.IsNotNull(result.Intents);
-            Assert.AreEqual(1, result.Intents.Count);
-            Assert.IsNotNull(result.Intents[string.Empty]);
-            Assert.AreEqual(result.GetTopScoringIntent(), (string.Empty, 1.0));
+            Assert.AreEqual(0, result.Intents.Count);
             Assert.IsNotNull(result.Entities);
             Assert.AreEqual(0, result.Entities.Count);
         }

@@ -20,6 +20,8 @@ namespace Microsoft.Bot.Builder
     /// <seealso cref="IMiddleware"/>
     public class TurnContext : ITurnContext, IDisposable
     {
+        private const string TurnLocale = "turn.locale";
+
         private readonly IList<SendActivitiesHandler> _onSendActivities = new List<SendActivitiesHandler>();
         private readonly IList<UpdateActivityHandler> _onUpdateActivity = new List<UpdateActivityHandler>();
         private readonly IList<DeleteActivityHandler> _onDeleteActivity = new List<DeleteActivityHandler>();
@@ -50,6 +52,16 @@ namespace Microsoft.Bot.Builder
         /// </summary>
         /// <value>The services registered on this context object.</value>
         public TurnContextStateCollection TurnState { get; } = new TurnContextStateCollection();
+
+        /// <summary>
+        /// Gets or sets the locale on this context object.
+        /// </summary>
+        /// <value>The string of locale on this context object.</value>
+        public string Locale
+        {
+            get => this.TurnState.Get<string>(TurnLocale);
+            set { this.TurnState.Set(TurnLocale, value); }
+        }
 
         /// <summary>
         /// Gets the activity associated with this turn; or <c>null</c> when processing
@@ -401,6 +413,20 @@ namespace Microsoft.Bot.Builder
         /// </summary>
         public void Dispose()
         {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
+        /// </summary>
+        /// <param name="disposing">Boolean value that determines whether to free resources or not.</param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                // Dispose any disposable objects owned by the class here.
+            }
         }
 
         private async Task<ResourceResponse> UpdateActivityInternalAsync(
@@ -412,11 +438,11 @@ namespace Microsoft.Bot.Builder
             BotAssert.ActivityNotNull(activity);
             if (updateHandlers == null)
             {
-                throw new ArgumentException(nameof(updateHandlers));
+                throw new ArgumentException($"{nameof(updateHandlers)} is null.", nameof(updateHandlers));
             }
 
             // No middleware to run.
-            if (updateHandlers.Count() == 0)
+            if (!updateHandlers.Any())
             {
                 if (callAtBottom != null)
                 {
@@ -452,11 +478,11 @@ namespace Microsoft.Bot.Builder
 
             if (deleteHandlers == null)
             {
-                throw new ArgumentException(nameof(deleteHandlers));
+                throw new ArgumentException($"{nameof(deleteHandlers)} is null", nameof(deleteHandlers));
             }
 
             // No middleware to run.
-            if (deleteHandlers.Count() == 0)
+            if (!deleteHandlers.Any())
             {
                 if (callAtBottom != null)
                 {

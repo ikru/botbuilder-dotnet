@@ -13,6 +13,9 @@ using Microsoft.IdentityModel.Clients.ActiveDirectory;
 
 namespace Microsoft.Bot.Connector.Authentication
 {
+    /// <summary>
+    /// An authentication class that implements <see cref="IAuthenticator"/>, used to authenticate requests against Azure.
+    /// </summary>
     public class AdalAuthenticator : IAuthenticator
     {
         private const string MsalTemporarilyUnavailable = "temporarily_unavailable";
@@ -45,11 +48,24 @@ namespace Microsoft.Bot.Connector.Authentication
         private readonly OAuthConfiguration authConfig;
         private readonly ILogger logger;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="AdalAuthenticator"/> class.
+        /// </summary>
+        /// <param name="clientCredential">The client credential to use for token acquisition.</param>
+        /// <param name="configurationOAuth">A configuration object for OAuth client credential authentication.</param>
+        /// <param name="customHttpClient">A customized instance of the HttpClient class.</param>
         public AdalAuthenticator(ClientCredential clientCredential, OAuthConfiguration configurationOAuth, HttpClient customHttpClient = null)
             : this(clientCredential, configurationOAuth, customHttpClient, null)
         {
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="AdalAuthenticator"/> class.
+        /// </summary>
+        /// <param name="clientCredential">The client credential to use for token acquisition.</param>
+        /// <param name="configurationOAuth">A configuration object for OAuth client credential authentication.</param>
+        /// <param name="customHttpClient">A customized instance of the HttpClient class.</param>
+        /// <param name="logger">The type used to perform logging.</param>
         public AdalAuthenticator(ClientCredential clientCredential, OAuthConfiguration configurationOAuth, HttpClient customHttpClient = null, ILogger logger = null)
         {
             this.authConfig = configurationOAuth ?? throw new ArgumentNullException(nameof(configurationOAuth));
@@ -59,11 +75,26 @@ namespace Microsoft.Bot.Connector.Authentication
             Initialize(configurationOAuth, customHttpClient);
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="AdalAuthenticator"/> class.
+        /// </summary>
+        /// <param name="clientCertificate">A client credential that includes a X509Certificate.</param>
+        /// <param name="configurationOAuth">A configuration object for OAuth client credential authentication.</param>
+        /// <param name="customHttpClient">A customized instance of the HttpClient class.</param>
+        /// <param name="logger">The type used to perform logging.</param>
         public AdalAuthenticator(ClientAssertionCertificate clientCertificate, OAuthConfiguration configurationOAuth, HttpClient customHttpClient = null, ILogger logger = null)
             : this(clientCertificate, false, configurationOAuth, customHttpClient, logger)
         {
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="AdalAuthenticator"/> class.
+        /// </summary>
+        /// <param name="clientCertificate">A client credential that includes a X509Certificate.</param>
+        /// <param name="sendX5c">Enables easy certificates roll-over in Azure AD. Setting it to true sends the public certficate to Azure AD along with token requests.</param>
+        /// <param name="configurationOAuth">A configuration object for OAuth client credential authentication.</param>
+        /// <param name="customHttpClient">A customized instance of the HttpClient class.</param>
+        /// <param name="logger">The type used to perform logging.</param>
         public AdalAuthenticator(ClientAssertionCertificate clientCertificate, bool sendX5c, OAuthConfiguration configurationOAuth, HttpClient customHttpClient = null, ILogger logger = null)
         {
             this.authConfig = configurationOAuth ?? throw new ArgumentNullException(nameof(configurationOAuth));
@@ -74,6 +105,11 @@ namespace Microsoft.Bot.Connector.Authentication
             Initialize(configurationOAuth, customHttpClient);
         }
 
+        /// <summary>
+        /// Performs the call to acquire a security token.
+        /// </summary>
+        /// <param name="forceRefresh">Forces a token refresh by clearing the token cache and acquiring it again.</param>
+        /// <returns>A <see cref="Task{AuthenticationResult}" /> object.</returns>
         public async Task<AuthenticationResult> GetTokenAsync(bool forceRefresh = false)
         {
             var watch = Stopwatch.StartNew();
@@ -90,12 +126,131 @@ namespace Microsoft.Bot.Connector.Authentication
 
         async Task<AuthenticatorResult> IAuthenticator.GetTokenAsync(bool forceRefresh)
         {
-            var result = await GetTokenAsync(forceRefresh);
-            return new AuthenticatorResult() 
+            var result = await GetTokenAsync(forceRefresh).ConfigureAwait(false);
+            return new AuthenticatorResult()
             {
                 AccessToken = result.AccessToken,
                 ExpiresOn = result.ExpiresOn
             };
+        }
+
+        private static RetryParams HandleAdalException(Exception ex, int currentRetryCount)
+        {
+            if (IsAdalServiceUnavailable(ex))
+            {
+                return ComputeAdalRetry(ex);
+            }
+            else if (ex is ThrottleException)
+            {
+                // This is an exception that we threw, with knowledge that
+                // one of our threads is trying to acquire a token from the server
+                // Use the retry parameters recommended in the exception
+                ThrottleException throttlException = (ThrottleException)ex;
+                return throttlException.RetryParams ?? RetryParams.DefaultBackOff(currentRetryCount);
+            }
+            else if (IsAdalServiceInvalidRequest(ex))
+            {
+                return RetryParams.StopRetrying;
+            }
+            else
+            {
+                // We end up here is the exception is not an ADAL exception. An example, is under high traffic
+                // where we could have a timeout waiting to acquire a token, waiting on the semaphore.
+                // If we hit a timeout, we want to retry a reasonable number of times.
+                return RetryParams.DefaultBackOff(currentRetryCount);
+            }
+        }
+
+        private static bool IsAdalServiceUnavailable(Exception ex)
+        {
+            AdalServiceException adalServiceException = ex as AdalServiceException;
+            if (adalServiceException == null)
+            {
+                return false;
+            }
+
+            // When the Service Token Server (STS) is too busy because of “too many requests”,
+            // it returns an HTTP error 429
+            return adalServiceException.ErrorCode == MsalTemporarilyUnavailable || adalServiceException.StatusCode == HttpTooManyRequests;
+        }
+
+        /// <summary>
+        /// Determine whether exception represents an invalid request from AAD.
+        /// </summary>
+        /// <param name="ex">Exception.</param>
+        /// <returns>True if the exception represents an invalid request.</returns>
+        private static bool IsAdalServiceInvalidRequest(Exception ex)
+        {
+            if (ex is AdalServiceException adal)
+            {
+                // ErrorCode is "invalid_request"
+                // but HTTP StatusCode covers more non-retryable conditions
+                if (adal.StatusCode == (int)HttpStatusCode.BadRequest)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static RetryParams ComputeAdalRetry(Exception ex)
+        {
+            if (ex is AdalServiceException)
+            {
+                AdalServiceException adalServiceException = (AdalServiceException)ex;
+
+                // When the Service Token Server (STS) is too busy because of “too many requests”,
+                // it returns an HTTP error 429 with a hint about when you can try again (Retry-After response field) as a delay in seconds
+                if (adalServiceException.ErrorCode == MsalTemporarilyUnavailable || adalServiceException.StatusCode == HttpTooManyRequests)
+                {
+                    RetryConditionHeaderValue retryAfter = adalServiceException.Headers.RetryAfter;
+
+                    // Depending on the service, the recommended retry time may be in retryAfter.Delta or retryAfter.Date. Check both.
+                    if (retryAfter != null && retryAfter.Delta.HasValue)
+                    {
+                        return new RetryParams(retryAfter.Delta.Value);
+                    }
+                    else if (retryAfter != null && retryAfter.Date.HasValue)
+                    {
+                        return new RetryParams(retryAfter.Date.Value.Offset);
+                    }
+
+                    // We got a 429 but didn't get a specific back-off time. Use the default
+                    return RetryParams.DefaultBackOff(0);
+                }
+            }
+
+            return RetryParams.DefaultBackOff(0);
+        }
+
+        private void ReleaseSemaphore()
+        {
+            try
+            {
+                tokenRefreshSemaphore.Release();
+            }
+            catch (SemaphoreFullException)
+            {
+                // We should not be hitting this after switching to SemaphoreSlim, but if we do hit it everything will keep working.
+                // Logging to have clear knowledge of whether this is happening.
+                logger?.LogWarning("Attempted to release a full semaphore.");
+            }
+
+            // Any exception other than SemaphoreFullException should be thrown right away
+        }
+
+        private void Initialize(OAuthConfiguration configurationOAuth, HttpClient customHttpClient)
+        {
+            if (customHttpClient != null)
+            {
+                var httpClientFactory = new ConstantHttpClientFactory(customHttpClient);
+                this.authContext = new AuthenticationContext(configurationOAuth.Authority, true, new TokenCache(), httpClientFactory);
+            }
+            else
+            {
+                this.authContext = new AuthenticationContext(configurationOAuth.Authority);
+            }
         }
 
         private async Task<AuthenticationResult> AcquireTokenAsync(bool forceRefresh = false)
@@ -175,130 +330,6 @@ namespace Microsoft.Bot.Connector.Authentication
                     ReleaseSemaphore();
                 }
             }
-        }
-
-        private void ReleaseSemaphore()
-        {
-            try
-            {
-                tokenRefreshSemaphore.Release();
-            }
-            catch (SemaphoreFullException)
-            {
-                // We should not be hitting this after switching to SemaphoreSlim, but if we do hit it everything will keep working.
-                // Logging to have clear knowledge of whether this is happening.
-                logger?.LogWarning("Attempted to release a full semaphore.");
-            }
-
-            // Any exception other than SemaphoreFullException should be thrown right away
-        }
-
-        private RetryParams HandleAdalException(Exception ex, int currentRetryCount)
-        {
-            if (IsAdalServiceUnavailable(ex))
-            {
-                return ComputeAdalRetry(ex);
-            }
-            else if (ex is ThrottleException)
-            {
-                // This is an exception that we threw, with knowledge that
-                // one of our threads is trying to acquire a token from the server
-                // Use the retry parameters recommended in the exception
-                ThrottleException throttlException = (ThrottleException)ex;
-                return throttlException.RetryParams ?? RetryParams.DefaultBackOff(currentRetryCount);
-            }
-            else if (IsAdalServiceInvalidRequest(ex))
-            {
-                return RetryParams.StopRetrying;
-            }
-            else
-            {
-                // We end up here is the exception is not an ADAL exception. An example, is under high traffic
-                // where we could have a timeout waiting to acquire a token, waiting on the semaphore.
-                // If we hit a timeout, we want to retry a reasonable number of times.
-                return RetryParams.DefaultBackOff(currentRetryCount);
-            }
-        }
-
-        private bool IsAdalServiceUnavailable(Exception ex)
-        {
-            AdalServiceException adalServiceException = ex as AdalServiceException;
-            if (adalServiceException == null)
-            {
-                return false;
-            }
-
-            // When the Service Token Server (STS) is too busy because of “too many requests”,
-            // it returns an HTTP error 429
-            return adalServiceException.ErrorCode == MsalTemporarilyUnavailable || adalServiceException.StatusCode == HttpTooManyRequests;
-        }
-
-        /// <summary>
-        /// Determine whether exception represents an invalid request from AAD.
-        /// </summary>
-        /// <param name="ex">Exception.</param>
-        /// <returns>True if the exception represents an invalid request.</returns>
-        private bool IsAdalServiceInvalidRequest(Exception ex)
-        {
-            if (ex is AdalServiceException adal)
-            {
-                // ErrorCode is "invalid_request"
-                // but HTTP StatusCode covers more non-retryable conditions
-                if (adal.StatusCode == (int)HttpStatusCode.BadRequest)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        private RetryParams ComputeAdalRetry(Exception ex)
-        {
-            if (ex is AdalServiceException)
-            {
-                AdalServiceException adalServiceException = (AdalServiceException)ex;
-
-                // When the Service Token Server (STS) is too busy because of “too many requests”,
-                // it returns an HTTP error 429 with a hint about when you can try again (Retry-After response field) as a delay in seconds
-                if (adalServiceException.ErrorCode == MsalTemporarilyUnavailable || adalServiceException.StatusCode == HttpTooManyRequests)
-                {
-                    RetryConditionHeaderValue retryAfter = adalServiceException.Headers.RetryAfter;
-
-                    // Depending on the service, the recommended retry time may be in retryAfter.Delta or retryAfter.Date. Check both.
-                    if (retryAfter != null && retryAfter.Delta.HasValue)
-                    {
-                        return new RetryParams(retryAfter.Delta.Value);
-                    }
-                    else if (retryAfter != null && retryAfter.Date.HasValue)
-                    {
-                        return new RetryParams(retryAfter.Date.Value.Offset);
-                    }
-
-                    // We got a 429 but didn't get a specific back-off time. Use the default
-                    return RetryParams.DefaultBackOff(0);
-                }
-            }
-
-            return RetryParams.DefaultBackOff(0);
-        }
-
-        private void Initialize(OAuthConfiguration configurationOAuth, HttpClient customHttpClient)
-        {
-            if (customHttpClient != null)
-            {
-                var httpClientFactory = new ConstantHttpClientFactory(customHttpClient);
-                this.authContext = new AuthenticationContext(configurationOAuth.Authority, true, new TokenCache(), httpClientFactory);
-            }
-            else
-            {
-                this.authContext = new AuthenticationContext(configurationOAuth.Authority);
-            }
-        }
-
-        private bool UseCertificate()
-        {
-            return this.clientCertificate != null;
         }
     }
 }

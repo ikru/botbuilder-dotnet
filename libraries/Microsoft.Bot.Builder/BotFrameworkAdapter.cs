@@ -316,6 +316,15 @@ namespace Microsoft.Bot.Builder
             await ContinueConversationAsync(claimsIdentity, reference, audience, callback, cancellationToken).ConfigureAwait(false);
         }
 
+        /// <summary>
+        /// Sends a proactive message from the bot to a conversation.
+        /// </summary>
+        /// <param name="claimsIdentity">A <see cref="ClaimsIdentity"/> for the conversation.</param>
+        /// <param name="reference">A reference to the conversation to continue.</param>
+        /// <param name="audience">The target audience for the connector.</param>
+        /// <param name="callback">The method to call for the resulting bot turn.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>A task that represents the work queued to execute.</returns>
         public override async Task ContinueConversationAsync(ClaimsIdentity claimsIdentity, ConversationReference reference, string audience, BotCallbackHandler callback, CancellationToken cancellationToken)
         {
             if (claimsIdentity == null)
@@ -345,25 +354,22 @@ namespace Microsoft.Bot.Builder
                 context.TurnState.Add<BotCallbackHandler>(callback);
 
                 // Add audience to TurnContext.TurnState
-                context.TurnState.Add<string>(OAuthScopeKey, audience);
-
-                var appIdFromClaims = JwtTokenValidation.GetAppIdFromClaims(claimsIdentity.Claims);
+                context.TurnState.Add(OAuthScopeKey, audience);
 
                 // If we receive a valid app id in the incoming token claims, add the 
                 // channel service URL to the trusted services list so we can send messages back.
                 // the service URL for skills is trusted because it is applied by the SkillHandler based on the original request
                 // received by the root bot
+                var appIdFromClaims = JwtTokenValidation.GetAppIdFromClaims(claimsIdentity.Claims);
                 if (!string.IsNullOrEmpty(appIdFromClaims))
                 {
-                    var isValidApp = await CredentialProvider.IsValidAppIdAsync(appIdFromClaims).ConfigureAwait(false);
-
-                    if (isValidApp)
+                    if (SkillValidation.IsSkillClaim(claimsIdentity.Claims) || await CredentialProvider.IsValidAppIdAsync(appIdFromClaims).ConfigureAwait(false))
                     {
                         AppCredentials.TrustServiceUrl(reference.ServiceUrl);
                     }
                 }
 
-                var connectorClient = await CreateConnectorClientAsync(reference.ServiceUrl, claimsIdentity, audience, cancellationToken).ConfigureAwait(false);
+                var connectorClient = await CreateConnectorClientAsync(reference.ServiceUrl, claimsIdentity, audience).ConfigureAwait(false);
                 context.TurnState.Add(connectorClient);
 
                 await RunPipelineAsync(context, callback, cancellationToken).ConfigureAwait(false);
@@ -441,7 +447,7 @@ namespace Microsoft.Bot.Builder
                 // The OAuthScope is also stored on the TurnState to get the correct AppCredentials if fetching a token is required.
                 var scope = SkillValidation.IsSkillClaim(claimsIdentity.Claims) ? JwtTokenValidation.GetAppIdFromClaims(claimsIdentity.Claims) : GetBotFrameworkOAuthScope();
                 context.TurnState.Add(OAuthScopeKey, scope);
-                var connectorClient = await CreateConnectorClientAsync(activity.ServiceUrl, claimsIdentity, scope, cancellationToken).ConfigureAwait(false);
+                var connectorClient = await CreateConnectorClientAsync(activity.ServiceUrl, claimsIdentity, scope).ConfigureAwait(false);
                 context.TurnState.Add(connectorClient);
 
                 context.TurnState.Add(callback);
@@ -552,9 +558,11 @@ namespace Microsoft.Bot.Builder
                             var oAuthScope = turnContext.TurnState.Get<string>(OAuthScopeKey);
                             _ = (await GetAppCredentialsAsync(appId, oAuthScope).ConfigureAwait(false)).GetTokenAsync();
                         }
+#pragma warning disable CA1031 // Do not catch general exception types (we just catch and log the exception here)
                         catch (Exception ex)
+#pragma warning restore CA1031 // Do not catch general exception types
                         {
-                            Logger.LogError("Failed to fetch token before processing outgoing activity. " + ex.Message);
+                            Logger.LogError(ex, "Failed to fetch token before processing outgoing activity. " + ex.Message);
                         }
 
                         response = await ProcessOutgoingActivityAsync(turnContext, activity, cancellationToken).ConfigureAwait(false);
@@ -1153,28 +1161,28 @@ namespace Microsoft.Bot.Builder
         /// <param name="cancellationToken">A cancellation token that can be used by other objects
         /// or threads to receive notice of cancellation.</param>
         /// <returns>If the task completes, the exchanged token is returned.</returns>
-        public virtual async Task<TokenResponse> ExchangeTokenAsync(ITurnContext turnContext, AppCredentials oAuthAppCredentials, string connectionName, string userId, TokenExchangeRequest exchangeRequest, CancellationToken cancellationToken = default(CancellationToken))
+        public virtual async Task<TokenResponse> ExchangeTokenAsync(ITurnContext turnContext, AppCredentials oAuthAppCredentials, string connectionName, string userId, TokenExchangeRequest exchangeRequest, CancellationToken cancellationToken = default)
         {
             BotAssert.ContextNotNull(turnContext);
 
             if (string.IsNullOrWhiteSpace(connectionName))
             {
-                LogAndThrowException(new ArgumentException(nameof(connectionName)));
+                LogAndThrowException(new ArgumentException($"{nameof(connectionName)} is null or empty", nameof(connectionName)));
             }
 
             if (string.IsNullOrWhiteSpace(userId))
             {
-                LogAndThrowException(new ArgumentException(nameof(userId)));
+                LogAndThrowException(new ArgumentException($"{nameof(userId)} is null or empty", nameof(userId)));
             }
 
             if (exchangeRequest == null)
             {
-                LogAndThrowException(new ArgumentException(nameof(exchangeRequest)));
+                LogAndThrowException(new ArgumentException($"{nameof(exchangeRequest)} is null or empty", nameof(exchangeRequest)));
             }
 
             if (string.IsNullOrWhiteSpace(exchangeRequest.Token) && string.IsNullOrWhiteSpace(exchangeRequest.Uri))
             {
-                LogAndThrowException(new ArgumentException(nameof(exchangeRequest), "Either a Token or Uri property is required on the TokenExchangeRequest"));
+                LogAndThrowException(new ArgumentException("Either a Token or Uri property is required on the TokenExchangeRequest", nameof(exchangeRequest)));
             }
 
             var activity = turnContext.Activity;
@@ -1191,13 +1199,11 @@ namespace Microsoft.Bot.Builder
             {
                 return tokenResponse;
             }
-            else
-            {
-                LogAndThrowException(new InvalidOperationException($"ExchangeAsyncAsync returned improper result: {result.GetType()}"));
 
-                // even though LogAndThrowException always throws, compiler gives an error about not all code paths returning a value.
-                return null;
-            }
+            LogAndThrowException(new InvalidOperationException($"ExchangeAsyncAsync returned improper result: {result.GetType()}"));
+
+            // even though LogAndThrowException always throws, compiler gives an error about not all code paths returning a value.
+            return null;
         }
 
         /// <summary>
@@ -1236,7 +1242,34 @@ namespace Microsoft.Bot.Builder
         /// specified users, the ID of the activity's <see cref="IActivity.Conversation"/>
         /// will contain the ID of the new conversation.</para>
         /// </remarks>
-        public virtual async Task CreateConversationAsync(string channelId, string serviceUrl, MicrosoftAppCredentials credentials, ConversationParameters conversationParameters, BotCallbackHandler callback, CancellationToken cancellationToken)
+        public virtual Task CreateConversationAsync(string channelId, string serviceUrl, MicrosoftAppCredentials credentials, ConversationParameters conversationParameters, BotCallbackHandler callback, CancellationToken cancellationToken)
+        {
+            return CreateConversationAsync(channelId, serviceUrl, (AppCredentials)credentials, conversationParameters, callback, cancellationToken);
+        }
+
+        /// <summary>
+        /// Creates a conversation on the specified channel.
+        /// </summary>
+        /// <param name="channelId">The ID for the channel.</param>
+        /// <param name="serviceUrl">The channel's service URL endpoint.</param>
+        /// <param name="credentials">The application credentials for the bot.</param>
+        /// <param name="conversationParameters">The conversation information to use to
+        /// create the conversation.</param>
+        /// <param name="callback">The method to call for the resulting bot turn.</param>
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects
+        /// or threads to receive notice of cancellation.</param>
+        /// <returns>A task that represents the work queued to execute.</returns>
+        /// <remarks>To start a conversation, your bot must know its account information
+        /// and the user's account information on that channel.
+        /// Most _channels only support initiating a direct message (non-group) conversation.
+        /// <para>The adapter attempts to create a new conversation on the channel, and
+        /// then sends a <c>conversationUpdate</c> activity through its middleware pipeline
+        /// to the <paramref name="callback"/> method.</para>
+        /// <para>If the conversation is established with the
+        /// specified users, the ID of the activity's <see cref="IActivity.Conversation"/>
+        /// will contain the ID of the new conversation.</para>
+        /// </remarks>
+        public virtual async Task CreateConversationAsync(string channelId, string serviceUrl, AppCredentials credentials, ConversationParameters conversationParameters, BotCallbackHandler callback, CancellationToken cancellationToken)
         {
             var connectorClient = CreateConnectorClient(serviceUrl, credentials);
 
@@ -1288,7 +1321,35 @@ namespace Microsoft.Bot.Builder
         /// specified users, the ID of the activity's <see cref="IActivity.Conversation"/>
         /// will contain the ID of the new conversation.</para>
         /// </remarks>
-        public virtual async Task CreateConversationAsync(string channelId, string serviceUrl, MicrosoftAppCredentials credentials, ConversationParameters conversationParameters, BotCallbackHandler callback, ConversationReference reference, CancellationToken cancellationToken)
+        public virtual Task CreateConversationAsync(string channelId, string serviceUrl, MicrosoftAppCredentials credentials, ConversationParameters conversationParameters, BotCallbackHandler callback, ConversationReference reference, CancellationToken cancellationToken)
+        {
+            return CreateConversationAsync(channelId, serviceUrl, (AppCredentials)credentials, conversationParameters, callback, reference, cancellationToken);
+        }
+
+        /// <summary>
+        /// Creates a conversation on the specified channel. Overload receives a ConversationReference including the tenant.
+        /// </summary>
+        /// <param name="channelId">The ID for the channel.</param>
+        /// <param name="serviceUrl">The channel's service URL endpoint.</param>
+        /// <param name="credentials">The application credentials for the bot.</param>
+        /// <param name="conversationParameters">The conversation information to use to
+        /// create the conversation.</param>
+        /// <param name="callback">The method to call for the resulting bot turn.</param>
+        /// <param name="reference">A conversation reference that contains the tenant.</param>
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects
+        /// or threads to receive notice of cancellation.</param>
+        /// <returns>A task that represents the work queued to execute.</returns>
+        /// <remarks>To start a conversation, your bot must know its account information
+        /// and the user's account information on that channel.
+        /// Most _channels only support initiating a direct message (non-group) conversation.
+        /// <para>The adapter attempts to create a new conversation on the channel, and
+        /// then sends a <c>conversationUpdate</c> activity through its middleware pipeline
+        /// to the <paramref name="callback"/> method.</para>
+        /// <para>If the conversation is established with the
+        /// specified users, the ID of the activity's <see cref="IActivity.Conversation"/>
+        /// will contain the ID of the new conversation.</para>
+        /// </remarks>
+        public virtual async Task CreateConversationAsync(string channelId, string serviceUrl, AppCredentials credentials, ConversationParameters conversationParameters, BotCallbackHandler callback, ConversationReference reference, CancellationToken cancellationToken)
         {
             if (reference.Conversation != null)
             {
@@ -1309,7 +1370,7 @@ namespace Microsoft.Bot.Builder
 
         Task<IConnectorClient> IConnectorClientBuilder.CreateConnectorClientAsync(string serviceUrl, ClaimsIdentity claimsIdentity, string audience, CancellationToken cancellationToken)
         {
-            return CreateConnectorClientAsync(serviceUrl, claimsIdentity, audience, cancellationToken);
+            return CreateConnectorClientAsync(serviceUrl, claimsIdentity, audience);
         }
 
         /// <summary>
@@ -1321,7 +1382,7 @@ namespace Microsoft.Bot.Builder
         protected virtual async Task<OAuthClient> CreateOAuthApiClientAsync(ITurnContext turnContext, AppCredentials oAuthAppCredentials)
         {
             if (!OAuthClientConfig.EmulateOAuthCards &&
-                string.Equals(turnContext.Activity.ChannelId, Channels.Emulator, StringComparison.InvariantCultureIgnoreCase) &&
+                string.Equals(turnContext.Activity.ChannelId, Channels.Emulator, StringComparison.OrdinalIgnoreCase) &&
                 (await CredentialProvider.IsAuthenticationDisabledAsync().ConfigureAwait(false)))
             {
                 OAuthClientConfig.EmulateOAuthCards = true;
@@ -1335,7 +1396,7 @@ namespace Microsoft.Bot.Builder
             var appCredentials = oAuthAppCredentials ?? await GetAppCredentialsAsync(appId, oAuthScope).ConfigureAwait(false);
 
             if (!OAuthClientConfig.EmulateOAuthCards &&
-                string.Equals(turnContext.Activity.ChannelId, Channels.Emulator, StringComparison.InvariantCultureIgnoreCase) &&
+                string.Equals(turnContext.Activity.ChannelId, Channels.Emulator, StringComparison.OrdinalIgnoreCase) &&
                 (await CredentialProvider.IsAuthenticationDisabledAsync().ConfigureAwait(false)))
             {
                 OAuthClientConfig.EmulateOAuthCards = true;
@@ -1422,6 +1483,28 @@ namespace Microsoft.Bot.Builder
         }
 
         /// <summary>
+        /// Gets the AppId of the Bot out of the TurnState.
+        /// </summary>
+        /// <param name="turnContext">The context object for the turn.</param>
+        /// <returns>Bot's AppId.</returns>
+        private static string GetBotAppId(ITurnContext turnContext)
+        {
+            var botIdentity = (ClaimsIdentity)turnContext.TurnState.Get<IIdentity>(BotIdentityKey);
+            if (botIdentity == null)
+            {
+                throw new InvalidOperationException("An IIdentity is required in TurnState for this operation.");
+            }
+
+            var appId = botIdentity.Claims.FirstOrDefault(claim => claim.Type == AuthenticationConstants.AudienceClaim)?.Value;
+            if (string.IsNullOrWhiteSpace(appId))
+            {
+                throw new InvalidOperationException("Unable to get the bot AppId from the audience claim.");
+            }
+
+            return appId;
+        }
+
+        /// <summary>
         /// Generates the CallerId property for the activity based on
         /// https://github.com/microsoft/botframework-obi/blob/master/protocols/botframework-activity/botframework-activity.md#appendix-v---caller-id-values.
         /// </summary>
@@ -1463,10 +1546,9 @@ namespace Microsoft.Bot.Builder
         /// <param name="serviceUrl">The service URL.</param>
         /// <param name="claimsIdentity">The claims claimsIdentity.</param>
         /// <param name="audience">The target audience for the connector.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>ConnectorClient instance.</returns>
         /// <exception cref="NotSupportedException">ClaimsIdentity cannot be null. Pass Anonymous ClaimsIdentity if authentication is turned off.</exception>
-        private async Task<IConnectorClient> CreateConnectorClientAsync(string serviceUrl, ClaimsIdentity claimsIdentity, string audience, CancellationToken cancellationToken = default)
+        private async Task<IConnectorClient> CreateConnectorClientAsync(string serviceUrl, ClaimsIdentity claimsIdentity, string audience)
         {
             if (claimsIdentity == null)
             {
@@ -1497,7 +1579,7 @@ namespace Microsoft.Bot.Builder
                         GetBotFrameworkOAuthScope();
                 }
 
-                appCredentials = await GetAppCredentialsAsync(botId, scope, cancellationToken).ConfigureAwait(false);
+                appCredentials = await GetAppCredentialsAsync(botId, scope).ConfigureAwait(false);
             }
 
             return CreateConnectorClient(serviceUrl, appCredentials);
@@ -1544,9 +1626,8 @@ namespace Microsoft.Bot.Builder
         /// </summary>
         /// <param name="appId">The application identifier (AAD ID for the bot).</param>
         /// <param name="oAuthScope">The scope for the token. Skills use the skill's app ID. </param>
-        /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>App credentials.</returns>
-        private async Task<AppCredentials> GetAppCredentialsAsync(string appId, string oAuthScope, CancellationToken cancellationToken = default)
+        private async Task<AppCredentials> GetAppCredentialsAsync(string appId, string oAuthScope)
         {
             if (string.IsNullOrWhiteSpace(appId))
             {
@@ -1576,28 +1657,6 @@ namespace Microsoft.Bot.Builder
         }
 
         /// <summary>
-        /// Gets the AppId of the Bot out of the TurnState.
-        /// </summary>
-        /// <param name="turnContext">The context object for the turn.</param>
-        /// <returns>Bot's AppId.</returns>
-        private string GetBotAppId(ITurnContext turnContext)
-        {
-            var botIdentity = (ClaimsIdentity)turnContext.TurnState.Get<IIdentity>(BotIdentityKey);
-            if (botIdentity == null)
-            {
-                throw new InvalidOperationException("An IIdentity is required in TurnState for this operation.");
-            }
-
-            var appId = botIdentity.Claims.FirstOrDefault(claim => claim.Type == AuthenticationConstants.AudienceClaim)?.Value;
-            if (string.IsNullOrWhiteSpace(appId))
-            {
-                throw new InvalidOperationException("Unable to get the bot AppId from the audience claim.");
-            }
-
-            return appId;
-        }
-
-        /// <summary>
         /// This method returns the correct Bot Framework OAuthScope for AppCredentials.
         /// </summary>
         private string GetBotFrameworkOAuthScope()
@@ -1608,7 +1667,7 @@ namespace Microsoft.Bot.Builder
         }
 
         /// <summary>
-        /// Logs and throws an expcetion.
+        /// Logs and throws an exception.
         /// </summary>
         /// <param name="ex"> Exception instance to throw.</param>
         /// <param name="source"> Source method for the exception.</param>
@@ -1630,7 +1689,7 @@ namespace Microsoft.Bot.Builder
         {
             public async Task OnTurnAsync(ITurnContext turnContext, NextDelegate next, CancellationToken cancellationToken = default)
             {
-                if (Channels.Msteams.Equals(turnContext.Activity.ChannelId, StringComparison.InvariantCultureIgnoreCase) && turnContext.Activity.Conversation != null && string.IsNullOrEmpty(turnContext.Activity.Conversation.TenantId) && turnContext.Activity.ChannelData != null)
+                if (Channels.Msteams.Equals(turnContext.Activity.ChannelId, StringComparison.OrdinalIgnoreCase) && turnContext.Activity.Conversation != null && string.IsNullOrEmpty(turnContext.Activity.Conversation.TenantId) && turnContext.Activity.ChannelData != null)
                 {
                     var teamsChannelData = JObject.FromObject(turnContext.Activity.ChannelData);
                     if (teamsChannelData["tenant"]?["id"] != null)

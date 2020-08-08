@@ -14,6 +14,9 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Bot.Builder
 {
+    /// <summary>
+    /// Middleware to enable debugging the state of a bot.
+    /// </summary>
     public class InspectionMiddleware : InterceptionMiddleware
     {
         private const string Command = "/INSPECT";
@@ -24,6 +27,14 @@ namespace Microsoft.Bot.Builder
         private readonly MicrosoftAppCredentials _credentials;
         private readonly Lazy<HttpClient> _httpClient;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="InspectionMiddleware"/> class.
+        /// </summary>
+        /// <param name="inspectionState">A state management object for inspection state.</param>
+        /// <param name="userState">A state management object for user state.</param>
+        /// <param name="conversationState">A state management object for conversation state.</param>
+        /// <param name="credentials">The authentication credentials.</param>
+        /// <param name="logger">A logger.</param>
         public InspectionMiddleware(InspectionState inspectionState, UserState userState = null, ConversationState conversationState = null, MicrosoftAppCredentials credentials = null, ILogger<InspectionMiddleware> logger = null)
             : base(logger)
         {
@@ -34,6 +45,12 @@ namespace Microsoft.Bot.Builder
             _httpClient = new Lazy<HttpClient>(() => new HttpClient());
         }
 
+        /// <summary>
+        /// Indentifies open and attach commands and calls the appropriate method.
+        /// </summary>
+        /// <param name="turnContext">The turn context.</param>
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>true if the command is open or attach, otherwise false.</returns>
         public async Task<bool> ProcessCommandAsync(ITurnContext turnContext, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (turnContext.Activity.Type == ActivityTypes.Message && turnContext.Activity.Text != null)
@@ -63,11 +80,22 @@ namespace Microsoft.Bot.Builder
             return false;
         }
 
+        /// <summary>
+        /// Gets the HTTP client for the current object.
+        /// </summary>
+        /// <returns>The HTTP client for the current object.</returns>
         protected virtual HttpClient GetHttpClient()
         {
             return _httpClient.Value;
         }
 
+        /// <summary>
+        /// Processes inbound activities.
+        /// </summary>
+        /// <param name="turnContext">The turn context.</param>
+        /// <param name="traceActivity">The trace activity.</param>
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
         protected override async Task<(bool shouldForwardToApplication, bool shouldIntercept)> InboundAsync(ITurnContext turnContext, Activity traceActivity, CancellationToken cancellationToken)
         {
             if (await ProcessCommandAsync(turnContext, cancellationToken).ConfigureAwait(false))
@@ -93,6 +121,13 @@ namespace Microsoft.Bot.Builder
             }
         }
 
+        /// <summary>
+        /// Processes outbound activities.
+        /// </summary>
+        /// <param name="turnContext">The turn context.</param>
+        /// <param name="traceActivities">A collection of trace activities.</param>
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
         protected override async Task OutboundAsync(ITurnContext turnContext, IEnumerable<Activity> traceActivities, CancellationToken cancellationToken)
         {
             var session = await FindSessionAsync(turnContext, cancellationToken).ConfigureAwait(false);
@@ -108,6 +143,12 @@ namespace Microsoft.Bot.Builder
             }
         }
 
+        /// <summary>
+        /// Processes the state management object.
+        /// </summary>
+        /// <param name="turnContext">The turn context.</param>
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
         protected override async Task TraceStateAsync(ITurnContext turnContext, CancellationToken cancellationToken)
         {
             var session = await FindSessionAsync(turnContext, cancellationToken).ConfigureAwait(false);
@@ -131,6 +172,32 @@ namespace Microsoft.Bot.Builder
 
                 await InvokeSendAsync(turnContext, session, botState.TraceActivity(), cancellationToken).ConfigureAwait(false);
             }
+        }
+
+        private static string OpenCommand(InspectionSessionsByStatus sessions, ConversationReference conversationReference)
+        {
+            var sessionId = Guid.NewGuid().ToString();
+            sessions.OpenedSessions.Add(sessionId, conversationReference);
+            return sessionId;
+        }
+
+        private static bool AttachCommand(string attachId, InspectionSessionsByStatus sessions, string sessionId)
+        {
+            if (sessions.OpenedSessions.TryGetValue(sessionId, out var inspectionSessionState))
+            {
+                sessions.AttachedSessions[attachId] = inspectionSessionState;
+                sessions.OpenedSessions.Remove(sessionId);
+                return true;
+            }
+
+            return false;
+        }
+
+        private static string GetAttachId(Activity activity)
+        {
+            // If we are running in a Microsoft Teams Team the conversation Id will reflect a particular thread the bot is in.
+            // So if we are in a Team then we will associate the "attach" with the Team Id rather than the more restrictive conversation Id.
+            return activity.TeamsGetTeamInfo()?.Id ?? activity.Conversation.Id;
         }
 
         private async Task ProcessOpenCommandAsync(ITurnContext turnContext, CancellationToken cancellationToken)
@@ -166,25 +233,6 @@ namespace Microsoft.Bot.Builder
             await _inspectionState.SaveChangesAsync(turnContext, false, cancellationToken).ConfigureAwait(false);
         }
 
-        private string OpenCommand(InspectionSessionsByStatus sessions, ConversationReference conversationReference)
-        {
-            var sessionId = Guid.NewGuid().ToString();
-            sessions.OpenedSessions.Add(sessionId, conversationReference);
-            return sessionId;
-        }
-
-        private bool AttachCommand(string attachId, InspectionSessionsByStatus sessions, string sessionId)
-        {
-            if (sessions.OpenedSessions.TryGetValue(sessionId, out var inspectionSessionState))
-            {
-                sessions.AttachedSessions[attachId] = inspectionSessionState;
-                sessions.OpenedSessions.Remove(sessionId);
-                return true;
-            }
-
-            return false;
-        }
-
         private async Task<InspectionSession> FindSessionAsync(ITurnContext turnContext, CancellationToken cancellationToken)
         {
             var accessor = _inspectionState.CreateProperty<InspectionSessionsByStatus>(nameof(InspectionSessionsByStatus));
@@ -217,13 +265,6 @@ namespace Microsoft.Bot.Builder
             var openSessions = await accessor.GetAsync(turnContext, () => new InspectionSessionsByStatus(), cancellationToken).ConfigureAwait(false);
             openSessions.AttachedSessions.Remove(GetAttachId(turnContext.Activity));
             await _inspectionState.SaveChangesAsync(turnContext, false, cancellationToken).ConfigureAwait(false);
-        }
-
-        private string GetAttachId(Activity activity)
-        {
-            // If we are running in a Microsoft Teams Team the conversation Id will reflect a particular thread the bot is in.
-            // So if we are in a Team then we will associate the "attach" with the Team Id rather than the more restrictive conversation Id.
-            return activity.TeamsGetTeamInfo()?.Id ?? activity.Conversation.Id;
         }
     }
 }
